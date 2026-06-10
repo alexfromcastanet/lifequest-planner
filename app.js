@@ -88,6 +88,17 @@ const workoutXp = {
   max: 160
 };
 
+const weeklyBoss = {
+  name: "The Drift",
+  rewardXp: 100,
+  targets: [
+    { id: "work", category: "work", label: "Work quests", target: 5 },
+    { id: "gym", category: "gym", label: "Gym sessions", target: 3 },
+    { id: "diet", category: "diet", label: "Diet wins", target: 5 },
+    { id: "life", category: "life", label: "Life resets", target: 3 }
+  ]
+};
+
 const categories = {
   work: {
     label: "Work",
@@ -250,6 +261,8 @@ function bindDom() {
     "week-title",
     "week-xp",
     "week-bars",
+    "boss-reward-pill",
+    "weekly-boss-card",
     "achievement-grid",
     "workout-week-pill",
     "active-workout-panel",
@@ -369,6 +382,12 @@ function bindEvents() {
       renderFilters();
       renderAgenda();
       renderCalendarAgenda();
+      return;
+    }
+
+    const bossAction = event.target.closest("[data-boss-action]");
+    if (bossAction) {
+      handleBossAction(bossAction);
       return;
     }
 
@@ -837,6 +856,12 @@ function getActiveEmptyText(tasks, emptyText = "No quests for this day.") {
   }
 
   return emptyText;
+}
+
+function handleBossAction(button) {
+  if (button.dataset.bossAction === "claim-weekly-boss") {
+    claimWeeklyBossReward();
+  }
 }
 
 function handleWorkoutPlanSubmit(event) {
@@ -1558,6 +1583,8 @@ function renderProgress() {
     })
     .join("");
 
+  renderWeeklyBoss(weekStart);
+
   dom.achievementGrid.innerHTML = achievements
     .map((achievement) => {
       const unlocked = achievement.isUnlocked(stats);
@@ -1573,6 +1600,63 @@ function renderProgress() {
       `;
     })
     .join("");
+}
+
+function renderWeeklyBoss(weekStart) {
+  const progress = getWeeklyBossProgress(weekStart);
+  const claimLabel = progress.claimed ? "Claimed" : progress.isComplete ? `Claim +${weeklyBoss.rewardXp} XP` : "Locked";
+  const claimDisabled = progress.claimed || !progress.isComplete ? " disabled" : "";
+  const claimClass = progress.claimed ? " is-claimed" : "";
+  const statusText = progress.claimed
+    ? "Boss cleared. Reward claimed."
+    : progress.isComplete
+      ? "Boss cleared. Claim your reward."
+      : `${progress.remaining} target${progress.remaining === 1 ? "" : "s"} left to clear.`;
+
+  dom.bossRewardPill.textContent = progress.claimed ? "Claimed" : `+${weeklyBoss.rewardXp} XP`;
+  dom.weeklyBossCard.innerHTML = `
+    <div class="boss-card-top">
+      <div class="boss-icon">
+        <svg class="icon"><use href="#icon-shield"></use></svg>
+      </div>
+      <span class="boss-copy">
+        <strong>${weeklyBoss.name}</strong>
+        <span>${statusText}</span>
+      </span>
+      <span class="boss-hp">${progress.damage}/${progress.total} HP</span>
+    </div>
+    <div class="boss-track" aria-label="Weekly boss progress">
+      <span class="boss-fill" style="width: ${progress.percent}%"></span>
+    </div>
+    <div class="boss-target-list">
+      ${progress.targets.map(renderWeeklyBossTarget).join("")}
+    </div>
+    <button class="primary-button boss-claim-button${claimClass}" type="button" data-boss-action="claim-weekly-boss"${claimDisabled}>
+      <svg class="icon"><use href="${progress.claimed ? "#icon-check" : "#icon-trophy"}"></use></svg>
+      ${claimLabel}
+    </button>
+  `;
+}
+
+function renderWeeklyBossTarget(target) {
+  const category = categories[target.category] || categories.life;
+  const percent = Math.min(100, Math.round((target.done / target.target) * 100));
+  const completeClass = target.done >= target.target ? " is-complete" : "";
+
+  return `
+    <div class="boss-target${completeClass}" style="--category-color: ${category.color}">
+      <div class="boss-target-top">
+        <span>
+          <svg class="icon"><use href="${category.icon}"></use></svg>
+          <strong>${target.label}</strong>
+        </span>
+        <span>${Math.min(target.done, target.target)}/${target.target}</span>
+      </div>
+      <div class="boss-target-track">
+        <span class="boss-target-fill" style="width: ${percent}%"></span>
+      </div>
+    </div>
+  `;
 }
 
 function renderTaskList(tasks, emptyText) {
@@ -1852,6 +1936,63 @@ function sumXp(tasks) {
   return tasks.reduce((total, task) => total + Number(task.xp || 0), 0);
 }
 
+function getWeeklyBossProgress(weekStart = getWeekStart(parseDateKey(todayKey))) {
+  const weekEnd = addDays(weekStart, 6);
+  const weekKey = toDateKey(weekStart);
+  const targets = weeklyBoss.targets.map((target) => {
+    const completed = getTaskOccurrencesForRange(weekStart, weekEnd, target.category).filter((task) => task.completed);
+    return {
+      ...target,
+      done: completed.length
+    };
+  });
+  const total = targets.reduce((sum, target) => sum + target.target, 0);
+  const damage = targets.reduce((sum, target) => sum + Math.min(target.done, target.target), 0);
+  const remaining = targets.filter((target) => target.done < target.target).length;
+  const claimed = Boolean(getWeeklyBossClaimTask(weekKey));
+
+  return {
+    weekKey,
+    targets,
+    total,
+    damage,
+    remaining,
+    claimed,
+    percent: total ? Math.min(100, Math.round((damage / total) * 100)) : 0,
+    isComplete: remaining === 0
+  };
+}
+
+function claimWeeklyBossReward() {
+  const progress = getWeeklyBossProgress();
+  if (!progress.isComplete || progress.claimed) return;
+
+  const completedAt = new Date().toISOString();
+  state.tasks.push({
+    id: createId(),
+    title: `Weekly boss cleared: ${weeklyBoss.name}`,
+    category: "life",
+    date: todayKey,
+    repeat: "none",
+    time: toTimeInputValue(new Date()),
+    xp: weeklyBoss.rewardXp,
+    completed: true,
+    completedAt,
+    completions: {},
+    timeOverrides: {},
+    bossWeek: progress.weekKey,
+    bonusType: "weekly-boss",
+    createdAt: completedAt
+  });
+
+  saveTasks();
+  renderAll();
+}
+
+function getWeeklyBossClaimTask(weekKey) {
+  return state.tasks.find((task) => task.bonusType === "weekly-boss" && task.bossWeek === weekKey);
+}
+
 function loadWorkoutData() {
   try {
     const raw = localStorage.getItem(WORKOUT_STORAGE_KEY);
@@ -2114,6 +2255,8 @@ function normalizeTask(task) {
     completedAt: task.completedAt || null,
     completions,
     timeOverrides,
+    bonusType: task.bonusType || "",
+    bossWeek: task.bossWeek || "",
     createdAt: task.createdAt || new Date().toISOString()
   };
 }
@@ -2165,6 +2308,8 @@ function makeTask(title, category, date, time, xp, completed, repeat = "none") {
     completedAt: completed ? new Date().toISOString() : null,
     completions,
     timeOverrides: {},
+    bonusType: "",
+    bossWeek: "",
     createdAt: new Date().toISOString()
   };
 }

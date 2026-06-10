@@ -871,6 +871,134 @@ p {
   text-align: right;
 }
 
+.weekly-boss-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.boss-card-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.boss-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--text);
+}
+
+.boss-copy {
+  min-width: 0;
+}
+
+.boss-copy strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.boss-copy span,
+.boss-hp {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.boss-hp {
+  white-space: nowrap;
+}
+
+.boss-track,
+.boss-target-track {
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eaf1;
+}
+
+.boss-track {
+  height: 18px;
+}
+
+.boss-fill,
+.boss-target-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.boss-fill {
+  background: var(--text);
+}
+
+.boss-target-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.boss-target {
+  display: grid;
+  gap: 8px;
+  min-height: 70px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--category-color);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.boss-target.is-complete {
+  background: #f8faf7;
+}
+
+.boss-target-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.boss-target-top span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.boss-target-top .icon {
+  color: var(--category-color);
+}
+
+.boss-target-track {
+  height: 10px;
+}
+
+.boss-target-fill {
+  background: var(--category-color);
+}
+
+.boss-claim-button {
+  min-height: 46px;
+}
+
+.boss-claim-button.is-claimed {
+  background: var(--gym);
+}
+
 .achievement-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1688,8 +1816,21 @@ body.time-editor-open .time-sheet-backdrop {
   }
 
   .template-grid,
-  .achievement-grid {
+  .achievement-grid,
+  .boss-target-list {
     grid-template-columns: 1fr;
+  }
+
+  .weekly-boss-card {
+    padding: 10px;
+  }
+
+  .boss-card-top {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .boss-hp {
+    grid-column: 2;
   }
 
   .workout-builder,

@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>LifeQuest Planner</title>
-  <link rel="manifest" href="manifest.webmanifest?v=13">
+  <link rel="manifest" href="manifest.webmanifest?v=14">
   <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -34,6 +34,7 @@
     <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5V3ZM8 3v6h8V3M8 21v-7h8v7"/></symbol>
     <symbol id="icon-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/></symbol>
   </svg>
 
   <div class="app-shell">
@@ -348,6 +349,15 @@
 
           <div class="section-heading compact-heading">
             <div>
+              <p class="eyebrow">Boss Battle</p>
+              <h2>Weekly Targets</h2>
+            </div>
+            <span class="pill" id="boss-reward-pill">+100 XP</span>
+          </div>
+          <div class="weekly-boss-card" id="weekly-boss-card"></div>
+
+          <div class="section-heading compact-heading">
+            <div>
               <p class="eyebrow">Milestones</p>
               <h2>Achievements</h2>
             </div>
@@ -406,6 +416,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=13" defer></script>
+  <script src="app.js?v=14" defer></script>
 </body>
 </html>
