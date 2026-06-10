@@ -95,10 +95,8 @@ const state = {
   selectedDate: todayKey,
   visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1),
   activeView: "today",
-  agendaMode: "timeline",
   filter: "all",
-  editingTime: null,
-  longPress: null
+  editingTime: null
 };
 
 const dom = {};
@@ -136,7 +134,6 @@ function bindDom() {
     "agenda-title",
     "selected-day-pill",
     "timeline-list",
-    "task-list",
     "completed-menu",
     "completed-summary",
     "completed-count",
@@ -175,15 +172,6 @@ function bindEvents() {
   dom.quickAddToggle.addEventListener("click", openQuickSheet);
   dom.timeEditor.addEventListener("submit", handleTimeEditorSubmit);
   dom.clearTaskTime.addEventListener("click", clearEditingTaskTime);
-  document.addEventListener("pointerdown", handleTaskPressStart);
-  document.addEventListener("pointermove", handleTaskPressMove);
-  document.addEventListener("pointerup", cancelLongPress);
-  document.addEventListener("pointercancel", cancelLongPress);
-  document.addEventListener("contextmenu", (event) => {
-    if (event.target.closest("[data-time-edit]")) {
-      event.preventDefault();
-    }
-  });
 
   document.getElementById("prev-month").addEventListener("click", () => {
     state.visibleMonth = new Date(
@@ -231,13 +219,6 @@ function bindEvents() {
     const sheetClose = event.target.closest("[data-sheet-close]");
     if (sheetClose) {
       closeQuickSheet();
-      return;
-    }
-
-    const agendaModeButton = event.target.closest("[data-agenda-mode]");
-    if (agendaModeButton) {
-      state.agendaMode = agendaModeButton.dataset.agendaMode;
-      renderAgenda();
       return;
     }
 
@@ -326,6 +307,11 @@ function handleTaskAction(button) {
   if (!task) return;
   const dateKey = button.dataset.date || state.selectedDate;
 
+  if (button.dataset.action === "edit-time") {
+    openTimeEditor(task.id, dateKey);
+    return;
+  }
+
   if (button.dataset.action === "toggle") {
     setTaskCompletion(task, dateKey, !isTaskCompletedOnDate(task, dateKey));
   }
@@ -336,39 +322,6 @@ function handleTaskAction(button) {
 
   saveTasks();
   renderAll();
-}
-
-function handleTaskPressStart(event) {
-  if (event.button !== undefined && event.button !== 0) return;
-  if (event.target.closest("button, input, select, textarea, a, summary, label")) return;
-
-  const target = event.target.closest("[data-time-edit]");
-  if (!target) return;
-
-  cancelLongPress();
-  state.longPress = {
-    x: event.clientX,
-    y: event.clientY,
-    timer: window.setTimeout(() => {
-      state.longPress = null;
-      openTimeEditor(target.dataset.id, target.dataset.date);
-    }, 650)
-  };
-}
-
-function handleTaskPressMove(event) {
-  if (!state.longPress) return;
-  const movedX = Math.abs(event.clientX - state.longPress.x);
-  const movedY = Math.abs(event.clientY - state.longPress.y);
-  if (movedX > 10 || movedY > 10) {
-    cancelLongPress();
-  }
-}
-
-function cancelLongPress() {
-  if (!state.longPress) return;
-  window.clearTimeout(state.longPress.timer);
-  state.longPress = null;
 }
 
 function openTimeEditor(taskId, dateKey) {
@@ -601,15 +554,7 @@ function renderAgenda() {
     day: "numeric"
   });
   dom.selectedDayPill.textContent = `${completed}/${tasks.length} / ${completedXp} XP`;
-  document.querySelectorAll("[data-agenda-mode]").forEach((button) => {
-    const isActive = button.dataset.agendaMode === state.agendaMode;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
-  });
-  dom.timelineList.classList.toggle("is-hidden", state.agendaMode !== "timeline");
-  dom.taskList.classList.toggle("is-hidden", state.agendaMode !== "list");
   dom.timelineList.innerHTML = renderTimelineList(activeTasks, getActiveEmptyText(tasks));
-  dom.taskList.innerHTML = renderTaskList(activeTasks, getActiveEmptyText(tasks));
   renderCompletedMenu({
     menu: dom.completedMenu,
     summary: dom.completedSummary,
@@ -784,8 +729,8 @@ function renderTimelineItem(task) {
 
   return `
     <li class="timeline-item${completeClass}" style="--category-color: ${category.color}">
-      <span class="timeline-time">${timeLabel}</span>
-      <div class="timeline-card" data-time-edit data-id="${task.id}" data-date="${occurrenceDate}" aria-label="Hold to edit time: ${escapeHtml(task.title)}">
+      <button class="timeline-time time-button" type="button" data-action="edit-time" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="Change time for ${escapeHtml(task.title)}">${timeLabel}</button>
+      <div class="timeline-card">
         <button class="task-check" type="button" data-action="toggle" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="${statusText}: ${escapeHtml(task.title)}">
           <svg class="icon"><use href="#icon-check"></use></svg>
         </button>
@@ -815,7 +760,7 @@ function renderTaskItem(task) {
   const repeatLabel = task.repeat && task.repeat !== "none" ? repeatLabels[task.repeat] : "";
 
   return `
-    <li class="task-item${completeClass}" data-time-edit data-id="${task.id}" data-date="${occurrenceDate}" style="--category-color: ${category.color}">
+    <li class="task-item${completeClass}" style="--category-color: ${category.color}">
       <button class="task-check" type="button" data-action="toggle" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="${statusText}: ${escapeHtml(task.title)}">
         <svg class="icon"><use href="#icon-check"></use></svg>
       </button>
@@ -823,7 +768,7 @@ function renderTaskItem(task) {
         <strong class="task-title">${escapeHtml(task.title)}</strong>
         <span class="task-meta">
           <span>${category.label}</span>
-          <span>${timeLabel}</span>
+          <button class="time-chip" type="button" data-action="edit-time" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="Change time for ${escapeHtml(task.title)}">${timeLabel}</button>
           ${task.completed ? "<span>Completed</span>" : ""}
           ${repeatLabel ? `<span>${repeatLabel}</span>` : ""}
         </span>

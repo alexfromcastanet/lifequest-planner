@@ -286,7 +286,6 @@ p {
 .secondary-button,
 .icon-button,
 .filter-chip,
-.mode-button,
 .template-button,
 .task-check,
 .calendar-day {
@@ -297,7 +296,6 @@ p {
 .tab-button,
 .primary-button,
 .secondary-button,
-.mode-button,
 .mobile-nav-button {
   display: inline-flex;
   align-items: center;
@@ -428,29 +426,6 @@ p {
   background: var(--text);
 }
 
-.agenda-mode {
-  display: inline-flex;
-  gap: 4px;
-  margin-bottom: 10px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-strong);
-}
-
-.mode-button {
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--muted);
-  background: transparent;
-  font-size: 0.84rem;
-}
-
-.mode-button.is-active {
-  color: #ffffff;
-  background: var(--text);
-}
-
 .section-heading {
   display: flex;
   align-items: center;
@@ -534,10 +509,23 @@ p {
 .timeline-time {
   z-index: 1;
   align-self: start;
-  padding-top: 14px;
+  min-height: 34px;
+  padding: 9px 4px 0 0;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 850;
+}
+
+.time-button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+}
+
+.time-button:active,
+.time-chip:active {
+  transform: translateY(1px);
 }
 
 .timeline-card {
@@ -668,13 +656,23 @@ p {
   font-weight: 750;
 }
 
-.task-meta span {
+.task-meta span,
+.task-meta .time-chip {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
   padding: 0 7px;
+  border: 0;
   border-radius: 999px;
   background: #eef2f6;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 750;
+}
+
+.task-meta .time-chip {
+  color: var(--text);
+  background: #e6f3f1;
 }
 
 .xp-badge {
