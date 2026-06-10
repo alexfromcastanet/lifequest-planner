@@ -187,6 +187,7 @@ const state = {
   filter: "all",
   workoutBuilder: createWorkoutBuilder("push"),
   activeWorkout: null,
+  editingWorkoutPlanId: null,
   editingTime: null
 };
 
@@ -336,6 +337,7 @@ function bindEvents() {
     state.filter = "all";
     state.workoutBuilder = createWorkoutBuilder("push");
     state.activeWorkout = null;
+    state.editingWorkoutPlanId = null;
     saveTasks();
     saveWorkoutData();
     syncFormDate();
@@ -427,6 +429,19 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
+    const planNameInput = event.target.closest("[data-workout-plan-name]");
+    if (planNameInput && event.key === "Enter") {
+      event.preventDefault();
+      saveWorkoutPlanName(planNameInput.dataset.workoutPlanName);
+      return;
+    }
+
+    if (planNameInput && event.key === "Escape") {
+      event.preventDefault();
+      cancelWorkoutPlanRename();
+      return;
+    }
+
     if (event.key === "Escape") {
       closeQuickSheet();
       closeTimeEditor();
@@ -865,6 +880,21 @@ function handleWorkoutAction(button) {
     return;
   }
 
+  if (action === "edit-plan-name") {
+    startWorkoutPlanRename(button.dataset.planId);
+    return;
+  }
+
+  if (action === "save-plan-name") {
+    saveWorkoutPlanName(button.dataset.planId);
+    return;
+  }
+
+  if (action === "cancel-plan-name") {
+    cancelWorkoutPlanRename();
+    return;
+  }
+
   if (action === "start-plan") {
     startWorkout(button.dataset.planId);
     return;
@@ -983,6 +1013,53 @@ function updateCustomExerciseSaveState() {
   dom.saveCustomExercise.disabled = dom.customExerciseName.value.trim().length === 0;
 }
 
+function startWorkoutPlanRename(planId) {
+  const plan = state.workouts.plans.find((item) => item.id === planId);
+  if (!plan) return;
+
+  state.editingWorkoutPlanId = planId;
+  renderWorkoutPlans();
+  window.setTimeout(() => {
+    const input = getWorkoutPlanNameInput(planId);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, 80);
+}
+
+function saveWorkoutPlanName(planId) {
+  const plan = state.workouts.plans.find((item) => item.id === planId);
+  const input = getWorkoutPlanNameInput(planId);
+  if (!plan || !input) return;
+
+  const nextName = input.value.trim().slice(0, 60);
+  if (!nextName) {
+    input.focus();
+    return;
+  }
+
+  plan.name = nextName;
+  if (state.activeWorkout && state.activeWorkout.planId === plan.id) {
+    state.activeWorkout.planName = nextName;
+  }
+
+  state.editingWorkoutPlanId = null;
+  saveWorkoutData();
+  renderWorkout();
+}
+
+function cancelWorkoutPlanRename() {
+  state.editingWorkoutPlanId = null;
+  renderWorkoutPlans();
+}
+
+function getWorkoutPlanNameInput(planId) {
+  return [...document.querySelectorAll("[data-workout-plan-name]")].find(
+    (input) => input.dataset.workoutPlanName === planId
+  );
+}
+
 function startWorkout(planId) {
   const plan = state.workouts.plans.find((item) => item.id === planId);
   if (!plan) return;
@@ -1028,6 +1105,9 @@ function deleteWorkoutPlan(planId) {
   if (!shouldDelete) return;
 
   state.workouts.plans = state.workouts.plans.filter((item) => item.id !== planId);
+  if (state.editingWorkoutPlanId === planId) {
+    state.editingWorkoutPlanId = null;
+  }
   saveWorkoutData();
   renderWorkout();
 }
@@ -1205,29 +1285,61 @@ function renderWorkoutPlans() {
   dom.workoutPlanList.innerHTML = state.workouts.plans
     .map((plan) => {
       const summary = getWorkoutPlanSummary(plan);
+      const isEditing = state.editingWorkoutPlanId === plan.id;
       const groupLabels = plan.groups
         .map((groupId) => muscleGroups[groupId])
         .filter(Boolean)
         .map((group) => `<span>${group.label}</span>`)
         .join("");
       return `
-        <article class="workout-plan-card">
-          <div class="workout-card-main">
+        <article class="workout-plan-card${isEditing ? " is-editing" : ""}">
+          <div class="workout-card-main${isEditing ? " workout-card-edit" : ""}">
             <svg class="icon"><use href="#icon-dumbbell"></use></svg>
-            <span>
-              <strong>${escapeHtml(plan.name)}</strong>
-              <span>${summary.exercises} moves / ${summary.sets} sets / ${summary.xp} XP</span>
-            </span>
+            ${
+              isEditing
+                ? `
+                  <label class="field workout-name-field">
+                    <span>Workout name</span>
+                    <input class="workout-name-input" type="text" value="${escapeHtml(plan.name)}" maxlength="60" data-workout-plan-name="${plan.id}" autocomplete="off">
+                  </label>
+                `
+                : `
+                  <span class="workout-plan-copy">
+                    <span class="workout-plan-title-row">
+                      <strong>${escapeHtml(plan.name)}</strong>
+                      <button class="icon-button rename-button" type="button" data-workout-action="edit-plan-name" data-plan-id="${plan.id}" aria-label="Rename ${escapeHtml(plan.name)}">
+                        <svg class="icon"><use href="#icon-pencil"></use></svg>
+                      </button>
+                    </span>
+                    <span>${summary.exercises} moves / ${summary.sets} sets / ${summary.xp} XP</span>
+                  </span>
+                `
+            }
           </div>
           <div class="workout-muscles">${groupLabels}</div>
           <div class="workout-card-actions">
-            <button class="secondary-button" type="button" data-workout-action="start-plan" data-plan-id="${plan.id}">
-              <svg class="icon"><use href="#icon-play"></use></svg>
-              Start
-            </button>
-            <button class="icon-button delete-button" type="button" data-workout-action="delete-plan" data-plan-id="${plan.id}" aria-label="Delete ${escapeHtml(plan.name)}">
-              <svg class="icon"><use href="#icon-trash"></use></svg>
-            </button>
+            ${
+              isEditing
+                ? `
+                  <button class="secondary-button" type="button" data-workout-action="cancel-plan-name" data-plan-id="${plan.id}">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                    Cancel
+                  </button>
+                  <button class="primary-button" type="button" data-workout-action="save-plan-name" data-plan-id="${plan.id}">
+                    <svg class="icon"><use href="#icon-save"></use></svg>
+                    Save
+                  </button>
+                `
+                : `
+                  <button class="secondary-button" type="button" data-workout-action="start-plan" data-plan-id="${plan.id}">
+                    <svg class="icon"><use href="#icon-play"></use></svg>
+                    Start
+                  </button>
+                  <button class="icon-button delete-button" type="button" data-workout-action="delete-plan" data-plan-id="${plan.id}" aria-label="Delete ${escapeHtml(plan.name)}">
+                    <svg class="icon"><use href="#icon-trash"></use></svg>
+                  </button>
+                `
+            }
           </div>
         </article>
       `;

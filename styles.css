@@ -1131,8 +1131,40 @@ p {
   align-items: center;
 }
 
+.workout-card-main.workout-card-edit {
+  align-items: end;
+}
+
 .workout-card-main .icon {
   color: var(--gym);
+}
+
+.workout-plan-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workout-plan-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.rename-button {
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  background: #eef2f6;
+}
+
+.workout-name-field {
+  min-width: 0;
+}
+
+.workout-name-input {
+  font-weight: 850;
 }
 
 .workout-muscles {
@@ -1161,6 +1193,10 @@ p {
 
 .workout-card-actions .secondary-button {
   min-width: 104px;
+}
+
+.workout-card-actions .primary-button {
+  min-width: 96px;
 }
 
 .active-workout-panel {
@@ -1706,10 +1742,27 @@ body.time-editor-open .time-sheet-backdrop {
     grid-template-columns: 1fr;
   }
 
+  .workout-plan-card.is-editing {
+    gap: 8px;
+  }
+
+  .workout-plan-title-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .rename-button {
+    width: 42px;
+    height: 42px;
+  }
+
   .workout-card-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     justify-content: stretch;
+  }
+
+  .workout-plan-card.is-editing .workout-card-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .workout-card-actions .secondary-button {
