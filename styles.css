@@ -917,6 +917,42 @@ p {
   background: var(--panel-strong);
 }
 
+.custom-exercise-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.custom-exercise-panel .secondary-button {
+  min-width: 144px;
+  min-height: 40px;
+}
+
+.custom-exercise-panel .builder-column-title div {
+  display: grid;
+  gap: 2px;
+}
+
+.custom-exercise-panel .builder-column-title strong {
+  display: block;
+}
+
+.custom-exercise-fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(120px, 0.85fr) minmax(76px, 0.45fr) minmax(76px, 0.45fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.custom-exercise-fields .primary-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
 .builder-block {
   display: grid;
   gap: 8px;
@@ -1621,8 +1657,39 @@ body.time-editor-open .time-sheet-backdrop {
   }
 
   .workout-builder,
+  .custom-exercise-panel,
   .active-workout-panel {
     padding: 10px;
+  }
+
+  .custom-exercise-panel .builder-column-title {
+    align-items: stretch;
+  }
+
+  .custom-exercise-panel .secondary-button {
+    width: 100%;
+  }
+
+  .custom-exercise-fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .custom-exercise-fields .field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .custom-exercise-fields .field:nth-child(2) {
+    grid-column: span 2;
+  }
+
+  .custom-exercise-fields .field:nth-child(3),
+  .custom-exercise-fields .field:nth-child(4) {
+    grid-column: span 1;
+  }
+
+  .custom-exercise-fields .primary-button {
+    grid-column: 1 / -1;
+    min-height: 46px;
   }
 
   .builder-column-title {

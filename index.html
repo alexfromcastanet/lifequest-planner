@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>LifeQuest Planner</title>
-  <link rel="manifest" href="manifest.webmanifest?v=11">
+  <link rel="manifest" href="manifest.webmanifest?v=12">
   <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -243,6 +243,41 @@
             </div>
           </div>
 
+          <div class="custom-exercise-panel">
+            <div class="builder-column-title">
+              <div>
+                <strong>Exercise buttons</strong>
+                <span>Add moves to the Tap moves library</span>
+              </div>
+              <button class="secondary-button" type="button" id="toggle-custom-exercise" data-workout-action="toggle-custom-exercise">
+                <svg class="icon"><use href="#icon-plus"></use></svg>
+                Add exercise
+              </button>
+            </div>
+            <div class="custom-exercise-fields" id="custom-exercise-fields" hidden>
+              <label class="field">
+                <span>Exercise</span>
+                <input id="custom-exercise-name" type="text" placeholder="Cable fly, hack squat..." autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Muscle</span>
+                <select id="custom-exercise-group"></select>
+              </label>
+              <label class="field">
+                <span>Sets</span>
+                <input id="custom-exercise-sets" type="number" min="1" max="8" step="1" inputmode="numeric" value="3">
+              </label>
+              <label class="field">
+                <span>Reps</span>
+                <input id="custom-exercise-reps" type="number" min="1" max="500" step="1" inputmode="numeric" value="10">
+              </label>
+              <button class="primary-button" type="button" id="save-custom-exercise" data-workout-action="save-custom-exercise">
+                <svg class="icon"><use href="#icon-save"></use></svg>
+                Save exercise
+              </button>
+            </div>
+          </div>
+
           <form class="workout-builder" id="workout-builder-form">
             <label class="field">
               <span>Plan name</span>
@@ -370,6 +405,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=11" defer></script>
+  <script src="app.js?v=12" defer></script>
 </body>
 </html>

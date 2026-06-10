@@ -41,7 +41,7 @@ const exerciseLibrary = [
   { id: "rower", name: "Rower", group: "cardio", sets: 1, reps: 12 }
 ];
 
-const exerciseMap = Object.fromEntries(exerciseLibrary.map((exercise) => [exercise.id, exercise]));
+const baseExerciseMap = Object.fromEntries(exerciseLibrary.map((exercise) => [exercise.id, exercise]));
 
 const workoutTypePresets = [
   {
@@ -260,6 +260,13 @@ function bindDom() {
     "workout-plan-name",
     "workout-type-row",
     "muscle-chip-row",
+    "toggle-custom-exercise",
+    "custom-exercise-fields",
+    "custom-exercise-name",
+    "custom-exercise-group",
+    "custom-exercise-sets",
+    "custom-exercise-reps",
+    "save-custom-exercise",
     "exercise-picker",
     "selected-exercise-list",
     "save-workout-plan",
@@ -290,6 +297,10 @@ function bindEvents() {
   dom.workoutPlanName.addEventListener("input", () => {
     state.workoutBuilder.name = dom.workoutPlanName.value;
   });
+  [dom.customExerciseName, dom.customExerciseSets, dom.customExerciseReps].forEach((field) => {
+    field.addEventListener("input", updateCustomExerciseSaveState);
+  });
+  dom.customExerciseGroup.addEventListener("change", updateCustomExerciseSaveState);
 
   document.getElementById("prev-month").addEventListener("click", () => {
     state.visibleMonth = new Date(
@@ -816,7 +827,7 @@ function getActiveEmptyText(tasks, emptyText = "No quests for this day.") {
 function handleWorkoutPlanSubmit(event) {
   event.preventDefault();
   const builder = state.workoutBuilder;
-  const exercises = builder.exerciseIds.map(makePlanExercise).filter(Boolean);
+  const exercises = builder.exerciseIds.map((exerciseId) => makePlanExercise(exerciseId, getCurrentExerciseLookup())).filter(Boolean);
 
   if (!exercises.length) return;
 
@@ -841,6 +852,16 @@ function handleWorkoutAction(button) {
 
   if (action === "remove-exercise") {
     removeWorkoutBuilderExercise(button.dataset.exerciseId);
+    return;
+  }
+
+  if (action === "toggle-custom-exercise") {
+    toggleCustomExerciseFields();
+    return;
+  }
+
+  if (action === "save-custom-exercise") {
+    saveCustomExercise();
     return;
   }
 
@@ -884,7 +905,7 @@ function toggleWorkoutBuilderGroup(groupId) {
 }
 
 function toggleWorkoutBuilderExercise(exerciseId) {
-  if (!exerciseMap[exerciseId]) return;
+  if (!getExerciseById(exerciseId)) return;
 
   const exercises = state.workoutBuilder.exerciseIds;
   if (exercises.includes(exerciseId)) {
@@ -899,6 +920,67 @@ function toggleWorkoutBuilderExercise(exerciseId) {
 function removeWorkoutBuilderExercise(exerciseId) {
   state.workoutBuilder.exerciseIds = state.workoutBuilder.exerciseIds.filter((id) => id !== exerciseId);
   renderWorkoutBuilder();
+}
+
+function toggleCustomExerciseFields(forceOpen) {
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : dom.customExerciseFields.hidden;
+  dom.customExerciseFields.hidden = !shouldOpen;
+  dom.toggleCustomExercise.setAttribute("aria-expanded", String(shouldOpen));
+
+  if (shouldOpen) {
+    window.setTimeout(() => dom.customExerciseName.focus(), 80);
+  }
+}
+
+function saveCustomExercise() {
+  const name = dom.customExerciseName.value.trim();
+  if (!name) {
+    updateCustomExerciseSaveState();
+    return;
+  }
+
+  const group = muscleGroups[dom.customExerciseGroup.value] ? dom.customExerciseGroup.value : "legs";
+  const exercise = {
+    id: createCustomExerciseId(name),
+    name,
+    group,
+    sets: clamp(Number(dom.customExerciseSets.value) || 3, 1, 8),
+    reps: clamp(Number(dom.customExerciseReps.value) || 10, 1, 500),
+    custom: true,
+    createdAt: new Date().toISOString()
+  };
+
+  state.workouts.customExercises.push(exercise);
+  state.workoutBuilder.type = "custom";
+  state.workoutBuilder.selectedGroups.add(group);
+  state.workoutBuilder.exerciseIds.push(exercise.id);
+  saveWorkoutData();
+  resetCustomExerciseFields();
+  renderWorkout();
+}
+
+function renderCustomExerciseControls() {
+  if (!dom.customExerciseGroup.options.length) {
+    dom.customExerciseGroup.innerHTML = muscleGroupList
+      .map((group) => `<option value="${group.id}">${group.label}</option>`)
+      .join("");
+    dom.customExerciseGroup.value = "chest";
+  }
+
+  updateCustomExerciseSaveState();
+}
+
+function resetCustomExerciseFields() {
+  dom.customExerciseName.value = "";
+  dom.customExerciseGroup.value = "chest";
+  dom.customExerciseSets.value = "3";
+  dom.customExerciseReps.value = "10";
+  updateCustomExerciseSaveState();
+}
+
+function updateCustomExerciseSaveState() {
+  if (!dom.saveCustomExercise) return;
+  dom.saveCustomExercise.disabled = dom.customExerciseName.value.trim().length === 0;
 }
 
 function startWorkout(planId) {
@@ -1046,12 +1128,14 @@ function renderWorkoutOverview() {
 function renderWorkoutBuilder() {
   const builder = state.workoutBuilder;
   const groups = builder.selectedGroups;
-  const selectedExercises = builder.exerciseIds.map((id) => exerciseMap[id]).filter(Boolean);
-  const visibleExercises = exerciseLibrary.filter((exercise) => !groups.size || groups.has(exercise.group));
+  const selectedExercises = builder.exerciseIds.map(getExerciseById).filter(Boolean);
+  const visibleExercises = getExerciseLibrary().filter((exercise) => !groups.size || groups.has(exercise.group));
 
   if (document.activeElement !== dom.workoutPlanName) {
     dom.workoutPlanName.value = builder.name;
   }
+
+  renderCustomExerciseControls();
 
   dom.workoutTypeRow.innerHTML = workoutTypePresets
     .map((preset) => {
@@ -1079,10 +1163,11 @@ function renderWorkoutBuilder() {
     .map((exercise) => {
       const group = muscleGroups[exercise.group];
       const activeClass = builder.exerciseIds.includes(exercise.id) ? " is-selected" : "";
+      const customLabel = exercise.custom ? " / Custom" : "";
       return `
         <button class="exercise-chip${activeClass}" type="button" data-exercise-id="${exercise.id}" style="--muscle-color: ${group.color}">
           <strong>${escapeHtml(exercise.name)}</strong>
-          <span>${group.label} / ${exercise.sets} x ${exercise.reps}</span>
+          <span>${group.label} / ${exercise.sets} x ${exercise.reps}${customLabel}</span>
         </button>
       `;
     })
@@ -1677,20 +1762,27 @@ function loadWorkoutData() {
 
 function normalizeWorkoutData(data) {
   const seeded = seedWorkoutData();
+  const customExercises = Array.isArray(data && data.customExercises)
+    ? data.customExercises.map(normalizeCustomExercise).filter(Boolean)
+    : [];
+  const exerciseLookup = createExerciseLookup(customExercises);
   const plans = Array.isArray(data && data.plans)
-    ? data.plans.map(normalizeWorkoutPlan).filter(Boolean)
+    ? data.plans.map((plan) => normalizeWorkoutPlan(plan, exerciseLookup)).filter(Boolean)
     : seeded.plans;
-  const logs = Array.isArray(data && data.logs) ? data.logs.map(normalizeWorkoutLog).filter(Boolean) : [];
+  const logs = Array.isArray(data && data.logs)
+    ? data.logs.map((log) => normalizeWorkoutLog(log, exerciseLookup)).filter(Boolean)
+    : [];
 
   return {
     plans: plans.length ? plans : seeded.plans,
-    logs
+    logs,
+    customExercises
   };
 }
 
-function normalizeWorkoutPlan(plan) {
+function normalizeWorkoutPlan(plan, exerciseLookup = baseExerciseMap) {
   if (!plan || !plan.name || !Array.isArray(plan.exercises)) return null;
-  const exercises = plan.exercises.map(normalizePlanExercise).filter(Boolean);
+  const exercises = plan.exercises.map((exercise) => normalizePlanExercise(exercise, exerciseLookup)).filter(Boolean);
   if (!exercises.length) return null;
 
   return {
@@ -1703,9 +1795,9 @@ function normalizeWorkoutPlan(plan) {
   };
 }
 
-function normalizePlanExercise(exercise) {
+function normalizePlanExercise(exercise, exerciseLookup = baseExerciseMap) {
   if (!exercise) return null;
-  const base = exerciseMap[exercise.id];
+  const base = exerciseLookup[exercise.id];
   if (!base) return null;
 
   return {
@@ -1718,7 +1810,7 @@ function normalizePlanExercise(exercise) {
   };
 }
 
-function normalizeWorkoutLog(log) {
+function normalizeWorkoutLog(log, exerciseLookup = baseExerciseMap) {
   if (!log || !log.planName || !Array.isArray(log.exercises)) return null;
 
   return {
@@ -1729,13 +1821,13 @@ function normalizeWorkoutLog(log) {
     startedAt: log.startedAt || log.completedAt || new Date().toISOString(),
     completedAt: log.completedAt || new Date().toISOString(),
     xp: clamp(Number(log.xp) || workoutXp.base, workoutXp.base, workoutXp.max),
-    exercises: log.exercises.map(normalizeLoggedExercise).filter(Boolean)
+    exercises: log.exercises.map((exercise) => normalizeLoggedExercise(exercise, exerciseLookup)).filter(Boolean)
   };
 }
 
-function normalizeLoggedExercise(exercise) {
+function normalizeLoggedExercise(exercise, exerciseLookup = baseExerciseMap) {
   if (!exercise || !Array.isArray(exercise.sets)) return null;
-  const base = exerciseMap[exercise.id];
+  const base = exerciseLookup[exercise.id];
   if (!base) return null;
 
   return {
@@ -1750,10 +1842,55 @@ function normalizeLoggedExercise(exercise) {
   };
 }
 
+function normalizeCustomExercise(exercise) {
+  if (!exercise || !exercise.name) return null;
+  const name = String(exercise.name).trim().slice(0, 60);
+  if (!name) return null;
+  const group = muscleGroups[exercise.group] ? exercise.group : "legs";
+
+  return {
+    id: String(exercise.id || createCustomExerciseId(name)),
+    name,
+    group,
+    sets: clamp(Number(exercise.sets) || 3, 1, 8),
+    reps: clamp(Number(exercise.reps) || 10, 1, 500),
+    custom: true,
+    createdAt: exercise.createdAt || new Date().toISOString()
+  };
+}
+
 function normalizeWorkoutGroups(groups, exercises) {
   const fromInput = Array.isArray(groups) ? groups.filter((groupId) => muscleGroups[groupId]) : [];
   const fromExercises = [...new Set(exercises.map((exercise) => exercise.group))];
   return fromInput.length ? [...new Set(fromInput)] : fromExercises;
+}
+
+function getExerciseLibrary() {
+  return [...exerciseLibrary, ...(state.workouts.customExercises || [])];
+}
+
+function createExerciseLookup(customExercises = []) {
+  return {
+    ...baseExerciseMap,
+    ...Object.fromEntries(customExercises.map((exercise) => [exercise.id, exercise]))
+  };
+}
+
+function getCurrentExerciseLookup() {
+  return createExerciseLookup(state.workouts.customExercises || []);
+}
+
+function getExerciseById(exerciseId) {
+  return getCurrentExerciseLookup()[exerciseId] || null;
+}
+
+function createCustomExerciseId(name) {
+  const slug = String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  return `custom-${slug || "exercise"}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 function saveWorkoutData() {
@@ -1771,7 +1908,8 @@ function seedWorkoutData() {
       makeWorkoutPlan("Pull Day", "pull"),
       makeWorkoutPlan("Leg Day", "legs")
     ],
-    logs: []
+    logs: [],
+    customExercises: []
   };
 }
 
@@ -1782,13 +1920,13 @@ function makeWorkoutPlan(name, typeId) {
     name,
     type: preset.id,
     groups: [...preset.groups],
-    exercises: preset.exercises.map(makePlanExercise).filter(Boolean),
+    exercises: preset.exercises.map((exerciseId) => makePlanExercise(exerciseId, baseExerciseMap)).filter(Boolean),
     createdAt: new Date().toISOString()
   };
 }
 
-function makePlanExercise(exerciseId) {
-  const base = exerciseMap[exerciseId];
+function makePlanExercise(exerciseId, exerciseLookup = baseExerciseMap) {
+  const base = exerciseLookup[exerciseId];
   if (!base) return null;
   return {
     id: base.id,
