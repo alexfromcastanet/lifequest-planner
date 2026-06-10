@@ -334,6 +334,13 @@ p {
   display: none;
 }
 
+.time-editor .quick-add-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -931,8 +938,73 @@ p {
 }
 
 .sheet-backdrop,
+.time-sheet-backdrop,
+.time-editor,
 .fab-button {
   display: none;
+}
+
+.time-editor {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 13;
+  width: min(380px, calc(100% - 24px));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 44px rgba(21, 29, 43, 0.2);
+  transform: translateX(-50%);
+}
+
+.editor-subtitle {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.check-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--focus);
+}
+
+.editor-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.editor-actions .primary-button,
+.editor-actions .secondary-button {
+  grid-column: auto;
+  min-height: 42px;
+}
+
+body.time-editor-open .time-editor {
+  display: grid;
+}
+
+body.time-editor-open .time-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: block;
+  background: rgba(24, 28, 35, 0.3);
 }
 
 .fab-button {
@@ -1021,6 +1093,14 @@ p {
     inset: 0;
     z-index: 10;
     background: rgba(24, 28, 35, 0.3);
+  }
+
+  .time-editor {
+    left: 10px;
+    right: 10px;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    width: auto;
+    transform: none;
   }
 
   body.quick-sheet-open .sheet-backdrop {

@@ -96,7 +96,9 @@ const state = {
   visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1),
   activeView: "today",
   agendaMode: "timeline",
-  filter: "all"
+  filter: "all",
+  editingTime: null,
+  longPress: null
 };
 
 const dom = {};
@@ -152,7 +154,13 @@ function bindDom() {
     "week-xp",
     "week-bars",
     "achievement-grid",
-    "quick-add-toggle"
+    "quick-add-toggle",
+    "time-editor",
+    "time-editor-task",
+    "edit-task-time",
+    "edit-apply-all-wrap",
+    "edit-apply-all",
+    "clear-task-time"
   ].forEach((id) => {
     dom[toCamel(id)] = document.getElementById(id);
   });
@@ -165,6 +173,17 @@ function bindEvents() {
     dom.taskXp.value = category ? category.xp : 25;
   });
   dom.quickAddToggle.addEventListener("click", openQuickSheet);
+  dom.timeEditor.addEventListener("submit", handleTimeEditorSubmit);
+  dom.clearTaskTime.addEventListener("click", clearEditingTaskTime);
+  document.addEventListener("pointerdown", handleTaskPressStart);
+  document.addEventListener("pointermove", handleTaskPressMove);
+  document.addEventListener("pointerup", cancelLongPress);
+  document.addEventListener("pointercancel", cancelLongPress);
+  document.addEventListener("contextmenu", (event) => {
+    if (event.target.closest("[data-time-edit]")) {
+      event.preventDefault();
+    }
+  });
 
   document.getElementById("prev-month").addEventListener("click", () => {
     state.visibleMonth = new Date(
@@ -203,6 +222,12 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    const timeClose = event.target.closest("[data-time-close]");
+    if (timeClose) {
+      closeTimeEditor();
+      return;
+    }
+
     const sheetClose = event.target.closest("[data-sheet-close]");
     if (sheetClose) {
       closeQuickSheet();
@@ -252,6 +277,7 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeQuickSheet();
+      closeTimeEditor();
     }
   });
 }
@@ -277,6 +303,7 @@ function handleTaskSubmit(event) {
     completed: false,
     completedAt: null,
     completions: {},
+    timeOverrides: {},
     createdAt: new Date().toISOString()
   });
 
@@ -311,6 +338,87 @@ function handleTaskAction(button) {
   renderAll();
 }
 
+function handleTaskPressStart(event) {
+  if (event.button !== undefined && event.button !== 0) return;
+  if (event.target.closest("button, input, select, textarea, a, summary, label")) return;
+
+  const target = event.target.closest("[data-time-edit]");
+  if (!target) return;
+
+  cancelLongPress();
+  state.longPress = {
+    x: event.clientX,
+    y: event.clientY,
+    timer: window.setTimeout(() => {
+      state.longPress = null;
+      openTimeEditor(target.dataset.id, target.dataset.date);
+    }, 650)
+  };
+}
+
+function handleTaskPressMove(event) {
+  if (!state.longPress) return;
+  const movedX = Math.abs(event.clientX - state.longPress.x);
+  const movedY = Math.abs(event.clientY - state.longPress.y);
+  if (movedX > 10 || movedY > 10) {
+    cancelLongPress();
+  }
+}
+
+function cancelLongPress() {
+  if (!state.longPress) return;
+  window.clearTimeout(state.longPress.timer);
+  state.longPress = null;
+}
+
+function openTimeEditor(taskId, dateKey) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || !dateKey) return;
+
+  const occurrence = getTaskOccurrence(task, dateKey);
+  if (!occurrence) return;
+
+  state.editingTime = { taskId, dateKey };
+  dom.timeEditorTask.textContent = `${task.title} / ${formatDate(dateKey, {
+    month: "short",
+    day: "numeric"
+  })}`;
+  dom.editTaskTime.value = occurrence.time || "";
+  dom.editApplyAll.checked = false;
+  dom.editApplyAllWrap.hidden = !isRecurringTask(task);
+  document.body.classList.add("time-editor-open");
+  dom.timeEditor.style.setProperty("display", "grid", "important");
+  window.setTimeout(() => dom.editTaskTime.focus(), 80);
+}
+
+function closeTimeEditor() {
+  state.editingTime = null;
+  document.body.classList.remove("time-editor-open");
+  if (dom.timeEditor) {
+    dom.timeEditor.style.removeProperty("display");
+  }
+}
+
+function handleTimeEditorSubmit(event) {
+  event.preventDefault();
+  saveEditingTaskTime(dom.editTaskTime.value);
+}
+
+function clearEditingTaskTime() {
+  saveEditingTaskTime("");
+}
+
+function saveEditingTaskTime(timeValue) {
+  if (!state.editingTime) return;
+  const task = state.tasks.find((item) => item.id === state.editingTime.taskId);
+  if (!task) return;
+
+  setTaskTime(task, state.editingTime.dateKey, timeValue, dom.editApplyAll.checked);
+  saveTasks();
+  closeTimeEditor();
+  renderAll();
+}
+
 function addTemplateQuest(index) {
   const template = templates[index];
   if (!template) return;
@@ -326,6 +434,7 @@ function addTemplateQuest(index) {
     completed: false,
     completedAt: null,
     completions: {},
+    timeOverrides: {},
     createdAt: new Date().toISOString()
   });
 
@@ -676,7 +785,7 @@ function renderTimelineItem(task) {
   return `
     <li class="timeline-item${completeClass}" style="--category-color: ${category.color}">
       <span class="timeline-time">${timeLabel}</span>
-      <div class="timeline-card">
+      <div class="timeline-card" data-time-edit data-id="${task.id}" data-date="${occurrenceDate}" aria-label="Hold to edit time: ${escapeHtml(task.title)}">
         <button class="task-check" type="button" data-action="toggle" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="${statusText}: ${escapeHtml(task.title)}">
           <svg class="icon"><use href="#icon-check"></use></svg>
         </button>
@@ -706,7 +815,7 @@ function renderTaskItem(task) {
   const repeatLabel = task.repeat && task.repeat !== "none" ? repeatLabels[task.repeat] : "";
 
   return `
-    <li class="task-item${completeClass}" style="--category-color: ${category.color}">
+    <li class="task-item${completeClass}" data-time-edit data-id="${task.id}" data-date="${occurrenceDate}" style="--category-color: ${category.color}">
       <button class="task-check" type="button" data-action="toggle" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="${statusText}: ${escapeHtml(task.title)}">
         <svg class="icon"><use href="#icon-check"></use></svg>
       </button>
@@ -746,6 +855,7 @@ function getTaskOccurrence(task, dateKey) {
   return {
     ...task,
     occurrenceDate: dateKey,
+    time: getTaskTimeOnDate(task, dateKey),
     completed: isTaskCompletedOnDate(task, dateKey),
     completedAt: getTaskCompletedAt(task, dateKey)
   };
@@ -841,6 +951,29 @@ function setTaskCompletion(task, dateKey, completed) {
   task.completedAt = completed ? new Date().toISOString() : null;
 }
 
+function getTaskTimeOnDate(task, dateKey) {
+  if (isRecurringTask(task) && task.timeOverrides && Object.prototype.hasOwnProperty.call(task.timeOverrides, dateKey)) {
+    return task.timeOverrides[dateKey];
+  }
+
+  return task.time || "";
+}
+
+function setTaskTime(task, dateKey, timeValue, applyAll) {
+  const nextTime = timeValue || "";
+
+  if (!isRecurringTask(task) || applyAll) {
+    task.time = nextTime;
+    if (applyAll) {
+      task.timeOverrides = {};
+    }
+    return;
+  }
+
+  task.timeOverrides = task.timeOverrides || {};
+  task.timeOverrides[dateKey] = nextTime;
+}
+
 function getStats() {
   const completedTasks = getCompletedOccurrences();
   const todayDone = getTasksForDate(todayKey, "all").filter((task) => task.completed);
@@ -932,6 +1065,10 @@ function normalizeTask(task) {
     task.completions && typeof task.completions === "object" && !Array.isArray(task.completions)
       ? task.completions
       : {};
+  const timeOverrides =
+    task.timeOverrides && typeof task.timeOverrides === "object" && !Array.isArray(task.timeOverrides)
+      ? task.timeOverrides
+      : {};
 
   if (repeat !== "none" && task.completed && !completions[task.date]) {
     completions[task.date] = {
@@ -951,6 +1088,7 @@ function normalizeTask(task) {
     completed: repeat === "none" ? Boolean(task.completed) : false,
     completedAt: task.completedAt || null,
     completions,
+    timeOverrides,
     createdAt: task.createdAt || new Date().toISOString()
   };
 }
@@ -1001,6 +1139,7 @@ function makeTask(title, category, date, time, xp, completed, repeat = "none") {
     completed: repeat === "none" ? completed : false,
     completedAt: completed ? new Date().toISOString() : null,
     completions,
+    timeOverrides: {},
     createdAt: new Date().toISOString()
   };
 }

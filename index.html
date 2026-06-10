@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>LifeQuest Planner</title>
-  <link rel="manifest" href="manifest.webmanifest?v=8">
+  <link rel="manifest" href="manifest.webmanifest?v=9">
   <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -238,6 +238,30 @@
   </div>
 
   <div class="sheet-backdrop" data-sheet-close></div>
+  <div class="time-sheet-backdrop" data-time-close></div>
+  <form class="time-editor" id="time-editor" aria-labelledby="time-editor-title">
+    <div class="quick-add-header">
+      <div>
+        <strong id="time-editor-title">Edit time</strong>
+        <span class="editor-subtitle" id="time-editor-task">Quest</span>
+      </div>
+      <button class="icon-button sheet-close" type="button" data-time-close aria-label="Close time editor">
+        <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+      </button>
+    </div>
+    <label class="field">
+      <span>Time</span>
+      <input id="edit-task-time" name="time" type="time">
+    </label>
+    <label class="check-field" id="edit-apply-all-wrap">
+      <input id="edit-apply-all" type="checkbox">
+      <span>Update every repeat</span>
+    </label>
+    <div class="editor-actions">
+      <button class="secondary-button" type="button" id="clear-task-time">Clear time</button>
+      <button class="primary-button" type="submit">Save</button>
+    </div>
+  </form>
   <button class="fab-button" id="quick-add-toggle" type="button" aria-label="Add quest" aria-expanded="false" aria-controls="task-form">
     <svg class="icon"><use href="#icon-plus"></use></svg>
   </button>
@@ -257,6 +281,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=8" defer></script>
+  <script src="app.js?v=9" defer></script>
 </body>
 </html>
