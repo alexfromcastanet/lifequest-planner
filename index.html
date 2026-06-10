@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f6f68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LifeQuest">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title>LifeQuest Planner</title>
+  <link rel="manifest" href="manifest.webmanifest?v=8">
+  <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=8">
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 11v6M14 11v6"/></symbol>
+    <symbol id="icon-flag" viewBox="0 0 24 24"><path d="M5 22V4M5 4h12l-2 5 2 5H5"/></symbol>
+    <symbol id="icon-flame" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-3-2-5-4-7 0 3-2 4-3 4 1-4-1-7-4-10 0 5-3 7-3 12 0 5 3 8 7 8Z"/></symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM5 6H3v2a4 4 0 0 0 4 4M19 6h2v2a4 4 0 0 1-4 4"/></symbol>
+    <symbol id="icon-briefcase" viewBox="0 0 24 24"><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1M4 7h16v12H4V7ZM4 12h16"/></symbol>
+    <symbol id="icon-dumbbell" viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></symbol>
+    <symbol id="icon-apple" viewBox="0 0 24 24"><path d="M12 7c-4-3-8 0-8 5 0 5 4 9 8 9s8-4 8-9c0-5-4-8-8-5ZM12 7c0-3 2-5 5-5"/></symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M20 5c-2-2-5-2-7 0l-1 1-1-1C9 3 6 3 4 5c-2 2-2 6 0 8l8 8 8-8c2-2 2-6 0-8Z"/></symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16V9M12 16V6M16 16v-4"/></symbol>
+    <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18 9a7 7 0 0 0-12-3M6 15a7 7 0 0 0 12 3"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LifeQuest</p>
+        <h1>Today Command</h1>
+      </div>
+      <button class="icon-button" id="reset-demo" type="button" aria-label="Reset demo data" title="Reset demo data">
+        <svg class="icon"><use href="#icon-refresh"></use></svg>
+      </button>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel score-panel" aria-label="Progress overview">
+        <div class="map-wrap">
+          <img src="assets/progress-map.png" alt="" class="map-image">
+          <div class="level-strip">
+            <div>
+              <span class="small-label">Level</span>
+              <strong id="level-number">1</strong>
+            </div>
+            <div class="level-progress">
+              <div class="progress-topline">
+                <span id="level-xp">0 XP</span>
+                <span id="next-level-xp">450 to next</span>
+              </div>
+              <div class="progress-track" aria-label="Level progress">
+                <span class="progress-fill" id="level-fill"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <svg class="icon"><use href="#icon-flag"></use></svg>
+            <span class="small-label">Today</span>
+            <strong id="today-score">0%</strong>
+          </div>
+          <div class="stat-tile">
+            <svg class="icon"><use href="#icon-flame"></use></svg>
+            <span class="small-label">Streak</span>
+            <strong id="streak-count">0 days</strong>
+          </div>
+          <div class="stat-tile">
+            <svg class="icon"><use href="#icon-trophy"></use></svg>
+            <span class="small-label">Complete</span>
+            <strong id="complete-count">0</strong>
+          </div>
+        </div>
+
+        <div class="category-board" id="category-board"></div>
+      </aside>
+
+      <section class="panel planner-panel">
+        <div class="view-tabs" role="tablist" aria-label="Planner views">
+          <button class="tab-button is-active" type="button" data-view="today" role="tab" aria-selected="true">
+            <svg class="icon"><use href="#icon-check"></use></svg>
+            Today
+          </button>
+          <button class="tab-button" type="button" data-view="calendar" role="tab" aria-selected="false">
+            <svg class="icon"><use href="#icon-calendar"></use></svg>
+            Calendar
+          </button>
+          <button class="tab-button" type="button" data-view="progress" role="tab" aria-selected="false">
+            <svg class="icon"><use href="#icon-chart"></use></svg>
+            Progress
+          </button>
+        </div>
+
+        <section class="view" id="today-view">
+          <form class="quick-add" id="task-form">
+            <div class="quick-add-header">
+              <strong>New quest</strong>
+              <button class="icon-button sheet-close" type="button" data-sheet-close aria-label="Close quick add">
+                <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+              </button>
+            </div>
+            <label class="field field-title">
+              <span>Quest</span>
+              <input id="task-title" name="title" type="text" placeholder="Deep work, lift, meal prep..." autocomplete="off" required>
+            </label>
+            <label class="field field-category">
+              <span>Type</span>
+              <select id="task-category" name="category"></select>
+            </label>
+            <label class="field field-date">
+              <span>Date</span>
+              <input id="task-date" name="date" type="date" required>
+            </label>
+            <label class="field field-repeat">
+              <span>Repeat</span>
+              <select id="task-repeat" name="repeat">
+                <option value="none">One-time</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </label>
+            <label class="field field-time">
+              <span>Time</span>
+              <input id="task-time" name="time" type="time">
+            </label>
+            <label class="field field-xp">
+              <span>XP</span>
+              <input id="task-xp" name="xp" type="number" min="5" max="200" step="5" value="25">
+            </label>
+            <button class="primary-button" type="submit">
+              <svg class="icon"><use href="#icon-plus"></use></svg>
+              Add
+            </button>
+          </form>
+
+          <div class="filter-row" id="filter-row" aria-label="Category filters"></div>
+
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Agenda</p>
+              <h2 id="agenda-title">Today</h2>
+            </div>
+            <span class="pill" id="selected-day-pill">0 XP</span>
+          </div>
+          <div class="agenda-mode" role="tablist" aria-label="Agenda mode">
+            <button class="mode-button is-active" type="button" data-agenda-mode="timeline" role="tab" aria-selected="true">
+              Timeline
+            </button>
+            <button class="mode-button" type="button" data-agenda-mode="list" role="tab" aria-selected="false">
+              List
+            </button>
+          </div>
+          <ol class="timeline-list" id="timeline-list"></ol>
+          <ul class="task-list" id="task-list"></ul>
+          <details class="completed-menu" id="completed-menu">
+            <summary>
+              <span id="completed-summary">Completed today</span>
+              <span class="pill" id="completed-count">0</span>
+            </summary>
+            <ul class="task-list completed-list" id="completed-task-list"></ul>
+          </details>
+
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Templates</p>
+              <h2>Quick quests</h2>
+            </div>
+          </div>
+          <div class="template-grid" id="template-grid"></div>
+        </section>
+
+        <section class="view" id="calendar-view" hidden>
+          <div class="calendar-toolbar">
+            <button class="icon-button" id="prev-month" type="button" aria-label="Previous month">
+              <svg class="icon"><use href="#icon-chevron-left"></use></svg>
+            </button>
+            <h2 id="month-label">Month</h2>
+            <button class="icon-button" id="next-month" type="button" aria-label="Next month">
+              <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+            </button>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+
+          <div class="section-heading calendar-agenda-heading">
+            <div>
+              <p class="eyebrow">Selected</p>
+              <h2 id="calendar-day-title">Day</h2>
+            </div>
+            <button class="secondary-button" id="jump-today" type="button">
+              <svg class="icon"><use href="#icon-flag"></use></svg>
+              Today
+            </button>
+          </div>
+          <ul class="task-list" id="calendar-task-list"></ul>
+          <details class="completed-menu" id="calendar-completed-menu">
+            <summary>
+              <span id="calendar-completed-summary">Completed</span>
+              <span class="pill" id="calendar-completed-count">0</span>
+            </summary>
+            <ul class="task-list completed-list" id="calendar-completed-task-list"></ul>
+          </details>
+        </section>
+
+        <section class="view" id="progress-view" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Week</p>
+              <h2 id="week-title">Progress</h2>
+            </div>
+            <span class="pill" id="week-xp">0 XP</span>
+          </div>
+          <div class="week-bars" id="week-bars"></div>
+
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Milestones</p>
+              <h2>Achievements</h2>
+            </div>
+          </div>
+          <div class="achievement-grid" id="achievement-grid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="sheet-backdrop" data-sheet-close></div>
+  <button class="fab-button" id="quick-add-toggle" type="button" aria-label="Add quest" aria-expanded="false" aria-controls="task-form">
+    <svg class="icon"><use href="#icon-plus"></use></svg>
+  </button>
+
+  <nav class="mobile-nav" aria-label="Primary">
+    <button class="mobile-nav-button is-active" type="button" data-view="today">
+      <svg class="icon"><use href="#icon-check"></use></svg>
+      <span>Today</span>
+    </button>
+    <button class="mobile-nav-button" type="button" data-view="calendar">
+      <svg class="icon"><use href="#icon-calendar"></use></svg>
+      <span>Calendar</span>
+    </button>
+    <button class="mobile-nav-button" type="button" data-view="progress">
+      <svg class="icon"><use href="#icon-chart"></use></svg>
+      <span>Progress</span>
+    </button>
+  </nav>
+
+  <script src="app.js?v=8" defer></script>
+</body>
+</html>

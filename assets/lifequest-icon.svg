@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LifeQuest">
+  <rect width="512" height="512" rx="96" fill="#0f6f68"/>
+  <path d="M125 337c44-84 83-126 131-126s87 42 131 126" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="156" cy="331" r="28" fill="#f2c94c"/>
+  <circle cx="256" cy="211" r="34" fill="#ffffff"/>
+  <circle cx="356" cy="331" r="28" fill="#f28b68"/>
+  <path d="M147 177h218" fill="none" stroke="#b9f3dd" stroke-width="24" stroke-linecap="round"/>
+  <path d="M181 256h150" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" opacity=".88"/>
+</svg>

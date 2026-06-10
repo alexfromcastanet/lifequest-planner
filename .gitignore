@@ -1,0 +1,4 @@
+tools/
+gh-login-output.txt
+gh-login-error.txt
+*.log
