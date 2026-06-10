@@ -332,7 +332,8 @@ p {
   display: none;
 }
 
-.time-editor .quick-add-header {
+.time-editor .quick-add-header,
+.focus-editor .quick-add-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -530,7 +531,8 @@ p {
 }
 
 .time-button:active,
-.time-chip:active {
+.time-chip:active,
+.focus-chip:active {
   transform: translateY(1px);
 }
 
@@ -663,7 +665,8 @@ p {
 }
 
 .task-meta span,
-.task-meta .time-chip {
+.task-meta .time-chip,
+.task-meta .focus-chip {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
@@ -679,6 +682,21 @@ p {
 .task-meta .time-chip {
   color: var(--text);
   background: #e6f3f1;
+}
+
+.task-meta .focus-chip {
+  color: #0d5f59;
+  background: #dff4ef;
+}
+
+.task-meta .focus-chip.is-claimed {
+  color: #16865f;
+  background: #e7f5ed;
+}
+
+.task-meta .focus-chip:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .xp-badge {
@@ -1468,12 +1486,15 @@ p {
 
 .sheet-backdrop,
 .time-sheet-backdrop,
+.focus-sheet-backdrop,
 .time-editor,
+.focus-editor,
 .fab-button {
   display: none;
 }
 
-.time-editor {
+.time-editor,
+.focus-editor {
   position: fixed;
   left: 50%;
   bottom: 24px;
@@ -1486,6 +1507,10 @@ p {
   background: #ffffff;
   box-shadow: 0 20px 44px rgba(21, 29, 43, 0.2);
   transform: translateX(-50%);
+}
+
+.focus-editor {
+  gap: 14px;
 }
 
 .editor-subtitle {
@@ -1524,11 +1549,72 @@ p {
   min-height: 42px;
 }
 
+.focus-timer-display {
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-duration-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.duration-chip {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #eef2f6;
+  font-weight: 850;
+}
+
+.duration-chip.is-active {
+  border-color: var(--text);
+  color: #ffffff;
+  background: var(--text);
+}
+
+.duration-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.focus-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.focus-actions .primary-button,
+.focus-actions .secondary-button {
+  min-width: 0;
+  min-height: 42px;
+}
+
+#focus-claim {
+  grid-column: 1 / -1;
+}
+
 body.time-editor-open .time-editor {
   display: grid;
 }
 
-body.time-editor-open .time-sheet-backdrop {
+body.focus-editor-open .focus-editor {
+  display: grid;
+}
+
+body.time-editor-open .time-sheet-backdrop,
+body.focus-editor-open .focus-sheet-backdrop {
   position: fixed;
   inset: 0;
   z-index: 12;
@@ -1628,7 +1714,8 @@ body.time-editor-open .time-sheet-backdrop {
     background: rgba(24, 28, 35, 0.3);
   }
 
-  .time-editor {
+  .time-editor,
+  .focus-editor {
     left: 10px;
     right: 10px;
     bottom: calc(86px + env(safe-area-inset-bottom));

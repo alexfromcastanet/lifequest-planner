@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>LifeQuest Planner</title>
-  <link rel="manifest" href="manifest.webmanifest?v=14">
+  <link rel="manifest" href="manifest.webmanifest?v=15">
   <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -31,6 +31,7 @@
     <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18 9a7 7 0 0 0-12-3M6 15a7 7 0 0 0 12 3"/></symbol>
     <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7-11-7Z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
     <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5V3ZM8 3v6h8V3M8 21v-7h8v7"/></symbol>
     <symbol id="icon-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></symbol>
@@ -393,6 +394,38 @@
       <button class="primary-button" type="submit">Save</button>
     </div>
   </form>
+  <div class="focus-sheet-backdrop" data-focus-close></div>
+  <section class="focus-editor" id="focus-editor" role="dialog" aria-modal="true" aria-labelledby="focus-editor-title">
+    <div class="quick-add-header">
+      <div>
+        <strong id="focus-editor-title">Focus sprint</strong>
+        <span class="editor-subtitle" id="focus-editor-task">Work quest</span>
+      </div>
+      <button class="icon-button sheet-close" type="button" data-focus-close aria-label="Close focus timer">
+        <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+      </button>
+    </div>
+    <div class="focus-timer-display" id="focus-timer-display" aria-live="polite">25:00</div>
+    <div class="focus-duration-row" id="focus-duration-row" aria-label="Focus duration"></div>
+    <div class="focus-actions">
+      <button class="primary-button" type="button" id="focus-start">
+        <svg class="icon"><use href="#icon-play"></use></svg>
+        Start
+      </button>
+      <button class="secondary-button" type="button" id="focus-pause">
+        <svg class="icon"><use href="#icon-pause"></use></svg>
+        Pause
+      </button>
+      <button class="secondary-button" type="button" id="focus-reset">
+        <svg class="icon"><use href="#icon-refresh"></use></svg>
+        Reset
+      </button>
+      <button class="primary-button" type="button" id="focus-claim">
+        <svg class="icon"><use href="#icon-check"></use></svg>
+        Claim +15 XP
+      </button>
+    </div>
+  </section>
   <button class="fab-button" id="quick-add-toggle" type="button" aria-label="Add quest" aria-expanded="false" aria-controls="task-form">
     <svg class="icon"><use href="#icon-plus"></use></svg>
   </button>
@@ -416,6 +449,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=14" defer></script>
+  <script src="app.js?v=15" defer></script>
 </body>
 </html>

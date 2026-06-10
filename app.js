@@ -99,6 +99,16 @@ const weeklyBoss = {
   ]
 };
 
+const focusSprint = {
+  rewardXp: 15,
+  defaultSeconds: 25 * 60,
+  durations: [
+    { label: "15", seconds: 15 * 60 },
+    { label: "25", seconds: 25 * 60 },
+    { label: "45", seconds: 45 * 60 }
+  ]
+};
+
 const categories = {
   work: {
     label: "Work",
@@ -199,7 +209,15 @@ const state = {
   workoutBuilder: createWorkoutBuilder("push"),
   activeWorkout: null,
   editingWorkoutPlanId: null,
-  editingTime: null
+  editingTime: null,
+  focusTimer: {
+    taskId: null,
+    dateKey: null,
+    durationSeconds: focusSprint.defaultSeconds,
+    remainingSeconds: focusSprint.defaultSeconds,
+    running: false,
+    intervalId: null
+  }
 };
 
 const dom = {};
@@ -292,7 +310,15 @@ function bindDom() {
     "edit-task-time",
     "edit-apply-all-wrap",
     "edit-apply-all",
-    "clear-task-time"
+    "clear-task-time",
+    "focus-editor",
+    "focus-editor-task",
+    "focus-timer-display",
+    "focus-duration-row",
+    "focus-start",
+    "focus-pause",
+    "focus-reset",
+    "focus-claim"
   ].forEach((id) => {
     dom[toCamel(id)] = document.getElementById(id);
   });
@@ -307,6 +333,11 @@ function bindEvents() {
   dom.quickAddToggle.addEventListener("click", openQuickSheet);
   dom.timeEditor.addEventListener("submit", handleTimeEditorSubmit);
   dom.clearTaskTime.addEventListener("click", clearEditingTaskTime);
+  dom.focusDurationRow.addEventListener("click", handleFocusDurationClick);
+  dom.focusStart.addEventListener("click", startFocusTimer);
+  dom.focusPause.addEventListener("click", pauseFocusTimer);
+  dom.focusReset.addEventListener("click", resetFocusTimer);
+  dom.focusClaim.addEventListener("click", claimFocusBonus);
   dom.workoutBuilderForm.addEventListener("submit", handleWorkoutPlanSubmit);
   dom.workoutPlanName.addEventListener("input", () => {
     state.workoutBuilder.name = dom.workoutPlanName.value;
@@ -351,6 +382,7 @@ function bindEvents() {
     state.workoutBuilder = createWorkoutBuilder("push");
     state.activeWorkout = null;
     state.editingWorkoutPlanId = null;
+    closeFocusTimer();
     saveTasks();
     saveWorkoutData();
     syncFormDate();
@@ -358,6 +390,12 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    const focusClose = event.target.closest("[data-focus-close]");
+    if (focusClose) {
+      closeFocusTimer();
+      return;
+    }
+
     const timeClose = event.target.closest("[data-time-close]");
     if (timeClose) {
       closeTimeEditor();
@@ -464,6 +502,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeQuickSheet();
       closeTimeEditor();
+      closeFocusTimer();
     }
   });
 }
@@ -514,6 +553,11 @@ function handleTaskAction(button) {
 
   if (button.dataset.action === "edit-time") {
     openTimeEditor(task.id, dateKey);
+    return;
+  }
+
+  if (button.dataset.action === "focus") {
+    openFocusTimer(task.id, dateKey);
     return;
   }
 
@@ -574,6 +618,150 @@ function saveEditingTaskTime(timeValue) {
   setTaskTime(task, state.editingTime.dateKey, timeValue, dom.editApplyAll.checked);
   saveTasks();
   closeTimeEditor();
+  renderAll();
+}
+
+function openFocusTimer(taskId, dateKey) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || !dateKey) return;
+
+  const occurrence = getTaskOccurrence(task, dateKey);
+  if (!occurrence || occurrence.category !== "work" || occurrence.completed || task.bonusType) return;
+
+  clearFocusInterval();
+  state.focusTimer.taskId = taskId;
+  state.focusTimer.dateKey = dateKey;
+  state.focusTimer.durationSeconds = focusSprint.defaultSeconds;
+  state.focusTimer.remainingSeconds = focusSprint.defaultSeconds;
+  state.focusTimer.running = false;
+
+  dom.focusEditorTask.textContent = `${task.title} / ${formatDate(dateKey, {
+    month: "short",
+    day: "numeric"
+  })}`;
+  renderFocusTimer();
+  document.body.classList.add("focus-editor-open");
+  dom.focusEditor.style.setProperty("display", "grid", "important");
+}
+
+function closeFocusTimer() {
+  clearFocusInterval();
+  state.focusTimer.taskId = null;
+  state.focusTimer.dateKey = null;
+  state.focusTimer.running = false;
+  document.body.classList.remove("focus-editor-open");
+  if (dom.focusEditor) {
+    dom.focusEditor.style.removeProperty("display");
+  }
+}
+
+function handleFocusDurationClick(event) {
+  const button = event.target.closest("[data-focus-duration]");
+  if (!button || state.focusTimer.running) return;
+
+  const seconds = Number(button.dataset.focusDuration);
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+
+  state.focusTimer.durationSeconds = seconds;
+  state.focusTimer.remainingSeconds = seconds;
+  renderFocusTimer();
+}
+
+function startFocusTimer() {
+  if (!state.focusTimer.taskId || state.focusTimer.running || state.focusTimer.remainingSeconds <= 0) return;
+
+  state.focusTimer.running = true;
+  clearFocusInterval();
+  state.focusTimer.intervalId = window.setInterval(() => {
+    state.focusTimer.remainingSeconds = Math.max(0, state.focusTimer.remainingSeconds - 1);
+
+    if (state.focusTimer.remainingSeconds === 0) {
+      clearFocusInterval();
+      state.focusTimer.running = false;
+    }
+
+    renderFocusTimer();
+  }, 1000);
+  renderFocusTimer();
+}
+
+function pauseFocusTimer() {
+  if (!state.focusTimer.taskId) return;
+  clearFocusInterval();
+  state.focusTimer.running = false;
+  renderFocusTimer();
+}
+
+function resetFocusTimer() {
+  if (!state.focusTimer.taskId) return;
+  clearFocusInterval();
+  state.focusTimer.running = false;
+  state.focusTimer.remainingSeconds = state.focusTimer.durationSeconds;
+  renderFocusTimer();
+}
+
+function clearFocusInterval() {
+  if (state.focusTimer && state.focusTimer.intervalId) {
+    window.clearInterval(state.focusTimer.intervalId);
+    state.focusTimer.intervalId = null;
+  }
+}
+
+function renderFocusTimer() {
+  if (!dom.focusTimerDisplay) return;
+
+  const timer = state.focusTimer;
+  const claimed = Boolean(timer.taskId && timer.dateKey && getFocusBonusTask(timer.taskId, timer.dateKey));
+  const complete = timer.remainingSeconds === 0;
+
+  dom.focusTimerDisplay.textContent = formatFocusSeconds(timer.remainingSeconds);
+  dom.focusDurationRow.innerHTML = focusSprint.durations
+    .map((duration) => {
+      const activeClass = duration.seconds === timer.durationSeconds ? " is-active" : "";
+      return `
+        <button class="duration-chip${activeClass}" type="button" data-focus-duration="${duration.seconds}" ${timer.running ? "disabled" : ""}>
+          ${duration.label} min
+        </button>
+      `;
+    })
+    .join("");
+
+  dom.focusStart.disabled = timer.running || complete || claimed;
+  dom.focusPause.disabled = !timer.running;
+  dom.focusReset.disabled = (!timer.running && timer.remainingSeconds === timer.durationSeconds) || claimed;
+  dom.focusClaim.disabled = !complete || claimed;
+  dom.focusClaim.innerHTML = claimed
+    ? `<svg class="icon"><use href="#icon-check"></use></svg> XP claimed`
+    : `<svg class="icon"><use href="#icon-check"></use></svg> Claim +${focusSprint.rewardXp} XP`;
+}
+
+function claimFocusBonus() {
+  const { taskId, dateKey, remainingSeconds } = state.focusTimer;
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || !dateKey || remainingSeconds > 0 || getFocusBonusTask(taskId, dateKey)) return;
+
+  const completedAt = new Date().toISOString();
+  state.tasks.push({
+    id: createId(),
+    title: `Focus sprint: ${task.title}`,
+    category: "work",
+    date: dateKey,
+    repeat: "none",
+    time: toTimeInputValue(new Date()),
+    xp: focusSprint.rewardXp,
+    completed: true,
+    completedAt,
+    completions: {},
+    timeOverrides: {},
+    bonusType: "focus-sprint",
+    bossWeek: "",
+    focusTaskId: task.id,
+    focusDate: dateKey,
+    createdAt: completedAt
+  });
+
+  saveTasks();
+  closeFocusTimer();
   renderAll();
 }
 
@@ -1682,6 +1870,7 @@ function renderTimelineItem(task) {
   const timeLabel = task.time ? formatTime(task.time) : "Anytime";
   const occurrenceDate = task.occurrenceDate || task.date;
   const repeatLabel = task.repeat && task.repeat !== "none" ? repeatLabels[task.repeat] : "";
+  const focusChip = renderFocusChip(task);
 
   return `
     <li class="timeline-item${completeClass}" style="--category-color: ${category.color}">
@@ -1696,6 +1885,7 @@ function renderTimelineItem(task) {
             <span>${category.label}</span>
             ${task.completed ? "<span>Completed</span>" : ""}
             ${repeatLabel ? `<span>${repeatLabel}</span>` : ""}
+            ${focusChip}
           </span>
         </span>
         <span class="xp-badge">${task.xp} XP</span>
@@ -1714,6 +1904,7 @@ function renderTaskItem(task) {
   const timeLabel = task.time ? formatTime(task.time) : "Anytime";
   const occurrenceDate = task.occurrenceDate || task.date;
   const repeatLabel = task.repeat && task.repeat !== "none" ? repeatLabels[task.repeat] : "";
+  const focusChip = renderFocusChip(task);
 
   return `
     <li class="task-item${completeClass}" style="--category-color: ${category.color}">
@@ -1727,6 +1918,7 @@ function renderTaskItem(task) {
           <button class="time-chip" type="button" data-action="edit-time" data-id="${task.id}" data-date="${occurrenceDate}" aria-label="Change time for ${escapeHtml(task.title)}">${timeLabel}</button>
           ${task.completed ? "<span>Completed</span>" : ""}
           ${repeatLabel ? `<span>${repeatLabel}</span>` : ""}
+          ${focusChip}
         </span>
       </span>
       <span class="xp-badge">${task.xp} XP</span>
@@ -1735,6 +1927,18 @@ function renderTaskItem(task) {
       </button>
     </li>
   `;
+}
+
+function renderFocusChip(task) {
+  const dateKey = task.occurrenceDate || task.date;
+  if (task.category !== "work" || task.completed || task.bonusType || !dateKey) return "";
+
+  const claimed = Boolean(getFocusBonusTask(task.id, dateKey));
+  const claimClass = claimed ? " is-claimed" : "";
+  const disabled = claimed ? " disabled" : "";
+  const label = claimed ? "Focused" : `Focus +${focusSprint.rewardXp}`;
+
+  return `<button class="focus-chip${claimClass}" type="button" data-action="focus" data-id="${task.id}" data-date="${dateKey}"${disabled}>${label}</button>`;
 }
 
 function getTasksForDate(dateKey, filter) {
@@ -1991,6 +2195,12 @@ function claimWeeklyBossReward() {
 
 function getWeeklyBossClaimTask(weekKey) {
   return state.tasks.find((task) => task.bonusType === "weekly-boss" && task.bossWeek === weekKey);
+}
+
+function getFocusBonusTask(taskId, dateKey) {
+  return state.tasks.find(
+    (task) => task.bonusType === "focus-sprint" && task.focusTaskId === taskId && task.focusDate === dateKey
+  );
 }
 
 function loadWorkoutData() {
@@ -2257,6 +2467,8 @@ function normalizeTask(task) {
     timeOverrides,
     bonusType: task.bonusType || "",
     bossWeek: task.bossWeek || "",
+    focusTaskId: task.focusTaskId || "",
+    focusDate: task.focusDate || "",
     createdAt: task.createdAt || new Date().toISOString()
   };
 }
@@ -2310,6 +2522,8 @@ function makeTask(title, category, date, time, xp, completed, repeat = "none") {
     timeOverrides: {},
     bonusType: "",
     bossWeek: "",
+    focusTaskId: "",
+    focusDate: "",
     createdAt: new Date().toISOString()
   };
 }
@@ -2357,6 +2571,13 @@ function formatTime(value) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function formatFocusSeconds(totalSeconds) {
+  const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function toTimeInputValue(date) {
