@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
   <title>LifeQuest Planner</title>
-  <link rel="manifest" href="manifest.webmanifest?v=10">
+  <link rel="manifest" href="manifest.webmanifest?v=11">
   <link rel="icon" href="assets/lifequest-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -30,6 +30,9 @@
     <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18 9a7 7 0 0 0-12-3M6 15a7 7 0 0 0 12 3"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7-11-7Z"/></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5V3ZM8 3v6h8V3M8 21v-7h8v7"/></symbol>
+    <symbol id="icon-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   </svg>
 
   <div class="app-shell">
@@ -94,6 +97,10 @@
           <button class="tab-button" type="button" data-view="calendar" role="tab" aria-selected="false">
             <svg class="icon"><use href="#icon-calendar"></use></svg>
             Calendar
+          </button>
+          <button class="tab-button" type="button" data-view="workout" role="tab" aria-selected="false">
+            <svg class="icon"><use href="#icon-dumbbell"></use></svg>
+            Workout
           </button>
           <button class="tab-button" type="button" data-view="progress" role="tab" aria-selected="false">
             <svg class="icon"><use href="#icon-chart"></use></svg>
@@ -206,6 +213,93 @@
           </details>
         </section>
 
+        <section class="view" id="workout-view" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Gym</p>
+              <h2>Workout Builder</h2>
+            </div>
+            <span class="pill" id="workout-week-pill">0 this week</span>
+          </div>
+
+          <div class="active-workout-panel" id="active-workout-panel" hidden>
+            <div class="section-heading workout-session-heading">
+              <div>
+                <p class="eyebrow">Now training</p>
+                <h2 id="active-workout-title">Workout</h2>
+              </div>
+              <span class="pill" id="workout-session-summary">0/0 sets</span>
+            </div>
+            <div class="guided-workout-list" id="active-workout-list"></div>
+            <div class="workout-session-actions">
+              <button class="secondary-button" type="button" data-workout-action="cancel-session">
+                <svg class="icon"><use href="#icon-x"></use></svg>
+                End
+              </button>
+              <button class="primary-button" type="button" id="finish-workout" data-workout-action="finish-session">
+                <svg class="icon"><use href="#icon-check"></use></svg>
+                Finish
+              </button>
+            </div>
+          </div>
+
+          <form class="workout-builder" id="workout-builder-form">
+            <label class="field">
+              <span>Plan name</span>
+              <input id="workout-plan-name" name="plan" type="text" placeholder="Push day, legs, full body..." autocomplete="off">
+            </label>
+
+            <div class="builder-block">
+              <span class="small-label">Workout type</span>
+              <div class="builder-chip-row" id="workout-type-row"></div>
+            </div>
+
+            <div class="builder-block">
+              <span class="small-label">Pick muscle groups</span>
+              <div class="builder-chip-row" id="muscle-chip-row"></div>
+            </div>
+
+            <div class="builder-columns">
+              <div class="builder-column">
+                <div class="builder-column-title">
+                  <strong>Tap moves</strong>
+                  <span>Filtered by muscle group</span>
+                </div>
+                <div class="exercise-picker" id="exercise-picker"></div>
+              </div>
+
+              <div class="builder-column">
+                <div class="builder-column-title">
+                  <strong>Your workout</strong>
+                  <span>Saved as a guided plan</span>
+                </div>
+                <ul class="selected-exercise-list" id="selected-exercise-list"></ul>
+              </div>
+            </div>
+
+            <button class="primary-button" type="submit" id="save-workout-plan">
+              <svg class="icon"><use href="#icon-save"></use></svg>
+              Save workout
+            </button>
+          </form>
+
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Plans</p>
+              <h2>Saved Workouts</h2>
+            </div>
+          </div>
+          <div class="workout-plan-list" id="workout-plan-list"></div>
+
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Log</p>
+              <h2>Recent Workouts</h2>
+            </div>
+          </div>
+          <div class="workout-log-list" id="workout-log-list"></div>
+        </section>
+
         <section class="view" id="progress-view" hidden>
           <div class="section-heading">
             <div>
@@ -266,12 +360,16 @@
       <svg class="icon"><use href="#icon-calendar"></use></svg>
       <span>Calendar</span>
     </button>
+    <button class="mobile-nav-button" type="button" data-view="workout">
+      <svg class="icon"><use href="#icon-dumbbell"></use></svg>
+      <span>Workout</span>
+    </button>
     <button class="mobile-nav-button" type="button" data-view="progress">
       <svg class="icon"><use href="#icon-chart"></use></svg>
       <span>Progress</span>
     </button>
   </nav>
 
-  <script src="app.js?v=10" defer></script>
+  <script src="app.js?v=11" defer></script>
 </body>
 </html>

@@ -1,4 +1,92 @@
 const STORAGE_KEY = "lifequest.tasks.v1";
+const WORKOUT_STORAGE_KEY = "lifequest.workouts.v1";
+
+const muscleGroups = {
+  chest: { label: "Chest", color: "#b94848" },
+  back: { label: "Back", color: "#2867d8" },
+  legs: { label: "Legs", color: "#16865f" },
+  shoulders: { label: "Shoulders", color: "#7b5bd6" },
+  arms: { label: "Arms", color: "#c85b36" },
+  core: { label: "Core", color: "#a36b00" },
+  cardio: { label: "Cardio", color: "#0f6f68" }
+};
+
+const muscleGroupList = Object.entries(muscleGroups).map(([id, value]) => ({
+  id,
+  ...value
+}));
+
+const exerciseLibrary = [
+  { id: "bench-press", name: "Bench Press", group: "chest", sets: 3, reps: 8 },
+  { id: "incline-dumbbell-press", name: "Incline DB Press", group: "chest", sets: 3, reps: 10 },
+  { id: "push-up", name: "Push-up", group: "chest", sets: 3, reps: 12 },
+  { id: "lat-pulldown", name: "Lat Pulldown", group: "back", sets: 3, reps: 10 },
+  { id: "seated-row", name: "Seated Row", group: "back", sets: 3, reps: 10 },
+  { id: "deadlift", name: "Deadlift", group: "back", sets: 3, reps: 5 },
+  { id: "squat", name: "Squat", group: "legs", sets: 3, reps: 8 },
+  { id: "romanian-deadlift", name: "Romanian Deadlift", group: "legs", sets: 3, reps: 8 },
+  { id: "leg-press", name: "Leg Press", group: "legs", sets: 3, reps: 10 },
+  { id: "lunge", name: "Lunge", group: "legs", sets: 3, reps: 10 },
+  { id: "shoulder-press", name: "Shoulder Press", group: "shoulders", sets: 3, reps: 8 },
+  { id: "lateral-raise", name: "Lateral Raise", group: "shoulders", sets: 3, reps: 12 },
+  { id: "face-pull", name: "Face Pull", group: "shoulders", sets: 3, reps: 12 },
+  { id: "biceps-curl", name: "Biceps Curl", group: "arms", sets: 3, reps: 10 },
+  { id: "triceps-pushdown", name: "Triceps Pushdown", group: "arms", sets: 3, reps: 10 },
+  { id: "hammer-curl", name: "Hammer Curl", group: "arms", sets: 3, reps: 10 },
+  { id: "plank", name: "Plank", group: "core", sets: 3, reps: 45 },
+  { id: "cable-crunch", name: "Cable Crunch", group: "core", sets: 3, reps: 12 },
+  { id: "hanging-knee-raise", name: "Hanging Knee Raise", group: "core", sets: 3, reps: 10 },
+  { id: "bike", name: "Bike", group: "cardio", sets: 1, reps: 20 },
+  { id: "incline-walk", name: "Incline Walk", group: "cardio", sets: 1, reps: 20 },
+  { id: "rower", name: "Rower", group: "cardio", sets: 1, reps: 12 }
+];
+
+const exerciseMap = Object.fromEntries(exerciseLibrary.map((exercise) => [exercise.id, exercise]));
+
+const workoutTypePresets = [
+  {
+    id: "push",
+    label: "Push",
+    name: "Push Day",
+    groups: ["chest", "shoulders", "arms"],
+    exercises: ["bench-press", "shoulder-press", "lateral-raise", "triceps-pushdown"]
+  },
+  {
+    id: "pull",
+    label: "Pull",
+    name: "Pull Day",
+    groups: ["back", "arms"],
+    exercises: ["lat-pulldown", "seated-row", "face-pull", "biceps-curl"]
+  },
+  {
+    id: "legs",
+    label: "Legs",
+    name: "Leg Day",
+    groups: ["legs", "core"],
+    exercises: ["squat", "romanian-deadlift", "leg-press", "plank"]
+  },
+  {
+    id: "full",
+    label: "Full Body",
+    name: "Full Body",
+    groups: ["chest", "back", "legs", "core"],
+    exercises: ["squat", "bench-press", "seated-row", "plank"]
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    name: "Custom Workout",
+    groups: ["chest", "back", "legs"],
+    exercises: []
+  }
+];
+
+const workoutXp = {
+  base: 25,
+  perSet: 4,
+  planBonus: 10,
+  max: 160
+};
 
 const categories = {
   work: {
@@ -92,19 +180,30 @@ const todayKey = toDateKey(today);
 
 const state = {
   tasks: loadTasks(),
+  workouts: loadWorkoutData(),
   selectedDate: todayKey,
   visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1),
   activeView: "today",
   filter: "all",
+  workoutBuilder: createWorkoutBuilder("push"),
+  activeWorkout: null,
   editingTime: null
 };
 
 const dom = {};
+let hasInitialized = false;
 
-document.addEventListener("DOMContentLoaded", init);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
+}
 
 function init() {
+  if (hasInitialized) return;
+  hasInitialized = true;
   bindDom();
+  document.body.dataset.activeView = state.activeView;
   renderCategorySelect();
   renderFilters();
   renderTemplates();
@@ -151,6 +250,21 @@ function bindDom() {
     "week-xp",
     "week-bars",
     "achievement-grid",
+    "workout-week-pill",
+    "active-workout-panel",
+    "active-workout-title",
+    "workout-session-summary",
+    "active-workout-list",
+    "finish-workout",
+    "workout-builder-form",
+    "workout-plan-name",
+    "workout-type-row",
+    "muscle-chip-row",
+    "exercise-picker",
+    "selected-exercise-list",
+    "save-workout-plan",
+    "workout-plan-list",
+    "workout-log-list",
     "quick-add-toggle",
     "time-editor",
     "time-editor-task",
@@ -172,6 +286,10 @@ function bindEvents() {
   dom.quickAddToggle.addEventListener("click", openQuickSheet);
   dom.timeEditor.addEventListener("submit", handleTimeEditorSubmit);
   dom.clearTaskTime.addEventListener("click", clearEditingTaskTime);
+  dom.workoutBuilderForm.addEventListener("submit", handleWorkoutPlanSubmit);
+  dom.workoutPlanName.addEventListener("input", () => {
+    state.workoutBuilder.name = dom.workoutPlanName.value;
+  });
 
   document.getElementById("prev-month").addEventListener("click", () => {
     state.visibleMonth = new Date(
@@ -201,10 +319,14 @@ function bindEvents() {
     const shouldReset = window.confirm("Reset to starter quests?");
     if (!shouldReset) return;
     state.tasks = seedTasks();
+    state.workouts = seedWorkoutData();
     state.selectedDate = todayKey;
     state.visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     state.filter = "all";
+    state.workoutBuilder = createWorkoutBuilder("push");
+    state.activeWorkout = null;
     saveTasks();
+    saveWorkoutData();
     syncFormDate();
     renderAll();
   });
@@ -237,6 +359,30 @@ function bindEvents() {
       return;
     }
 
+    const workoutAction = event.target.closest("[data-workout-action]");
+    if (workoutAction) {
+      handleWorkoutAction(workoutAction);
+      return;
+    }
+
+    const workoutTypeButton = event.target.closest("[data-workout-type]");
+    if (workoutTypeButton) {
+      setWorkoutBuilderType(workoutTypeButton.dataset.workoutType);
+      return;
+    }
+
+    const muscleButton = event.target.closest("[data-muscle-group]");
+    if (muscleButton) {
+      toggleWorkoutBuilderGroup(muscleButton.dataset.muscleGroup);
+      return;
+    }
+
+    const exerciseButton = event.target.closest("[data-exercise-id]");
+    if (exerciseButton) {
+      toggleWorkoutBuilderExercise(exerciseButton.dataset.exerciseId);
+      return;
+    }
+
     const dayButton = event.target.closest(".calendar-day[data-date]");
     if (dayButton) {
       selectDate(dayButton.dataset.date);
@@ -252,6 +398,20 @@ function bindEvents() {
     const templateButton = event.target.closest("[data-template]");
     if (templateButton) {
       addTemplateQuest(Number(templateButton.dataset.template));
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    const workoutField = event.target.closest("[data-workout-field]");
+    if (workoutField) {
+      updateActiveWorkoutField(workoutField);
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    const workoutField = event.target.closest("[data-workout-field]");
+    if (workoutField) {
+      updateActiveWorkoutField(workoutField);
     }
   });
 
@@ -396,8 +556,9 @@ function addTemplateQuest(index) {
 }
 
 function setView(view) {
-  if (!["today", "calendar", "progress"].includes(view)) return;
+  if (!["today", "calendar", "workout", "progress"].includes(view)) return;
   state.activeView = view;
+  document.body.dataset.activeView = view;
 
   document.querySelectorAll(".view").forEach((section) => {
     section.hidden = section.id !== `${view}-view`;
@@ -451,6 +612,7 @@ function renderAll() {
   renderAgenda();
   renderCalendar();
   renderCalendarAgenda();
+  renderWorkout();
   renderProgress();
 }
 
@@ -649,6 +811,519 @@ function getActiveEmptyText(tasks, emptyText = "No quests for this day.") {
   }
 
   return emptyText;
+}
+
+function handleWorkoutPlanSubmit(event) {
+  event.preventDefault();
+  const builder = state.workoutBuilder;
+  const exercises = builder.exerciseIds.map(makePlanExercise).filter(Boolean);
+
+  if (!exercises.length) return;
+
+  const name = dom.workoutPlanName.value.trim() || builder.name || "Gym Workout";
+  const plan = {
+    id: createId(),
+    name,
+    type: builder.type,
+    groups: Array.from(builder.selectedGroups),
+    exercises,
+    createdAt: new Date().toISOString()
+  };
+
+  state.workouts.plans.unshift(plan);
+  state.workoutBuilder = createWorkoutBuilder(builder.type);
+  saveWorkoutData();
+  renderWorkout();
+}
+
+function handleWorkoutAction(button) {
+  const action = button.dataset.workoutAction;
+
+  if (action === "remove-exercise") {
+    removeWorkoutBuilderExercise(button.dataset.exerciseId);
+    return;
+  }
+
+  if (action === "start-plan") {
+    startWorkout(button.dataset.planId);
+    return;
+  }
+
+  if (action === "delete-plan") {
+    deleteWorkoutPlan(button.dataset.planId);
+    return;
+  }
+
+  if (action === "cancel-session") {
+    cancelActiveWorkout();
+    return;
+  }
+
+  if (action === "finish-session") {
+    finishActiveWorkout();
+  }
+}
+
+function setWorkoutBuilderType(typeId) {
+  state.workoutBuilder = createWorkoutBuilder(typeId);
+  renderWorkoutBuilder();
+}
+
+function toggleWorkoutBuilderGroup(groupId) {
+  if (!muscleGroups[groupId]) return;
+
+  const groups = state.workoutBuilder.selectedGroups;
+  if (groups.has(groupId)) {
+    groups.delete(groupId);
+  } else {
+    groups.add(groupId);
+  }
+
+  state.workoutBuilder.type = "custom";
+  renderWorkoutBuilder();
+}
+
+function toggleWorkoutBuilderExercise(exerciseId) {
+  if (!exerciseMap[exerciseId]) return;
+
+  const exercises = state.workoutBuilder.exerciseIds;
+  if (exercises.includes(exerciseId)) {
+    state.workoutBuilder.exerciseIds = exercises.filter((id) => id !== exerciseId);
+  } else {
+    state.workoutBuilder.exerciseIds = [...exercises, exerciseId];
+  }
+
+  renderWorkoutBuilder();
+}
+
+function removeWorkoutBuilderExercise(exerciseId) {
+  state.workoutBuilder.exerciseIds = state.workoutBuilder.exerciseIds.filter((id) => id !== exerciseId);
+  renderWorkoutBuilder();
+}
+
+function startWorkout(planId) {
+  const plan = state.workouts.plans.find((item) => item.id === planId);
+  if (!plan) return;
+
+  if (state.activeWorkout) {
+    const replace = window.confirm("End the current workout and start this one?");
+    if (!replace) return;
+  }
+
+  state.activeWorkout = {
+    id: createId(),
+    planId: plan.id,
+    planName: plan.name,
+    startedAt: new Date().toISOString(),
+    date: todayKey,
+    exercises: plan.exercises.map((exercise) => {
+      const last = getLastExerciseSet(exercise.id);
+      const setCount = clamp(Number(exercise.sets) || 3, 1, 8);
+      return {
+        id: exercise.id,
+        name: exercise.name,
+        group: exercise.group,
+        sets: Array.from({ length: setCount }, () => ({
+          reps: exercise.reps || (last ? last.reps : 10),
+          weight: exercise.weight || (last ? last.weight : ""),
+          done: false
+        }))
+      };
+    })
+  };
+
+  renderWorkout();
+  if (dom.activeWorkoutPanel) {
+    dom.activeWorkoutPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function deleteWorkoutPlan(planId) {
+  const plan = state.workouts.plans.find((item) => item.id === planId);
+  if (!plan) return;
+
+  const shouldDelete = window.confirm(`Delete ${plan.name}?`);
+  if (!shouldDelete) return;
+
+  state.workouts.plans = state.workouts.plans.filter((item) => item.id !== planId);
+  saveWorkoutData();
+  renderWorkout();
+}
+
+function cancelActiveWorkout() {
+  if (!state.activeWorkout) return;
+
+  const shouldCancel = window.confirm("End this workout without saving it?");
+  if (!shouldCancel) return;
+
+  state.activeWorkout = null;
+  renderWorkout();
+}
+
+function updateActiveWorkoutField(input) {
+  if (!state.activeWorkout) return;
+
+  const exerciseIndex = Number(input.dataset.exerciseIndex);
+  const setIndex = Number(input.dataset.setIndex);
+  const field = input.dataset.workoutField;
+  const exercise = state.activeWorkout.exercises[exerciseIndex];
+  const set = exercise && exercise.sets[setIndex];
+
+  if (!set || !field) return;
+
+  if (field === "done") {
+    set.done = Boolean(input.checked);
+    const row = input.closest(".workout-set-row");
+    if (row) row.classList.toggle("is-done", set.done);
+  } else {
+    set[field] = input.value;
+  }
+
+  updateWorkoutSessionSummary();
+}
+
+function finishActiveWorkout() {
+  if (!state.activeWorkout) return;
+
+  const summary = getWorkoutSessionSummary(state.activeWorkout);
+  if (summary.completedSets === 0) return;
+
+  const completedAt = new Date().toISOString();
+  const log = {
+    id: state.activeWorkout.id,
+    planId: state.activeWorkout.planId,
+    planName: state.activeWorkout.planName,
+    date: todayKey,
+    startedAt: state.activeWorkout.startedAt,
+    completedAt,
+    xp: summary.xp,
+    exercises: state.activeWorkout.exercises.map((exercise) => ({
+      id: exercise.id,
+      name: exercise.name,
+      group: exercise.group,
+      sets: exercise.sets.map((set) => ({
+        reps: clamp(Number(set.reps) || 0, 0, 500),
+        weight: set.weight === "" ? "" : clamp(Number(set.weight) || 0, 0, 2000),
+        done: Boolean(set.done)
+      }))
+    }))
+  };
+
+  rememberWorkoutTargets(log);
+  state.workouts.logs.unshift(log);
+  state.workouts.logs = state.workouts.logs.slice(0, 100);
+  state.tasks.push(makeCompletedWorkoutTask(log));
+  state.selectedDate = todayKey;
+  state.activeWorkout = null;
+
+  saveWorkoutData();
+  saveTasks();
+  syncFormDate();
+  renderAll();
+}
+
+function renderWorkout() {
+  if (!dom.workoutTypeRow) return;
+
+  renderWorkoutOverview();
+  renderWorkoutBuilder();
+  renderWorkoutPlans();
+  renderWorkoutSession();
+  renderWorkoutLogs();
+}
+
+function renderWorkoutOverview() {
+  const weekStart = getWeekStart(parseDateKey(todayKey));
+  const weekEnd = addDays(weekStart, 6);
+  const weekLogs = state.workouts.logs.filter((log) => {
+    const date = parseDateKey(log.date || todayKey);
+    return date >= weekStart && date <= weekEnd;
+  });
+  const xp = weekLogs.reduce((total, log) => total + Number(log.xp || 0), 0);
+  dom.workoutWeekPill.textContent = `${weekLogs.length} this week / ${xp} XP`;
+}
+
+function renderWorkoutBuilder() {
+  const builder = state.workoutBuilder;
+  const groups = builder.selectedGroups;
+  const selectedExercises = builder.exerciseIds.map((id) => exerciseMap[id]).filter(Boolean);
+  const visibleExercises = exerciseLibrary.filter((exercise) => !groups.size || groups.has(exercise.group));
+
+  if (document.activeElement !== dom.workoutPlanName) {
+    dom.workoutPlanName.value = builder.name;
+  }
+
+  dom.workoutTypeRow.innerHTML = workoutTypePresets
+    .map((preset) => {
+      const activeClass = preset.id === builder.type ? " is-active" : "";
+      return `
+        <button class="builder-chip${activeClass}" type="button" data-workout-type="${preset.id}">
+          ${preset.label}
+        </button>
+      `;
+    })
+    .join("");
+
+  dom.muscleChipRow.innerHTML = muscleGroupList
+    .map((group) => {
+      const activeClass = groups.has(group.id) ? " is-active" : "";
+      return `
+        <button class="builder-chip muscle-chip${activeClass}" type="button" data-muscle-group="${group.id}" style="--muscle-color: ${group.color}">
+          ${group.label}
+        </button>
+      `;
+    })
+    .join("");
+
+  dom.exercisePicker.innerHTML = visibleExercises
+    .map((exercise) => {
+      const group = muscleGroups[exercise.group];
+      const activeClass = builder.exerciseIds.includes(exercise.id) ? " is-selected" : "";
+      return `
+        <button class="exercise-chip${activeClass}" type="button" data-exercise-id="${exercise.id}" style="--muscle-color: ${group.color}">
+          <strong>${escapeHtml(exercise.name)}</strong>
+          <span>${group.label} / ${exercise.sets} x ${exercise.reps}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  dom.selectedExerciseList.innerHTML = selectedExercises.length
+    ? selectedExercises
+        .map((exercise, index) => {
+          const group = muscleGroups[exercise.group];
+          return `
+            <li class="selected-exercise" style="--muscle-color: ${group.color}">
+              <span class="selected-number">${index + 1}</span>
+              <span class="selected-copy">
+                <strong>${escapeHtml(exercise.name)}</strong>
+                <span>${group.label} / ${exercise.sets} x ${exercise.reps}</span>
+              </span>
+              <button class="icon-button delete-button" type="button" data-workout-action="remove-exercise" data-exercise-id="${exercise.id}" aria-label="Remove ${escapeHtml(exercise.name)}">
+                <svg class="icon"><use href="#icon-x"></use></svg>
+              </button>
+            </li>
+          `;
+        })
+        .join("")
+    : `<li class="empty-state">Tap exercises to build this workout.</li>`;
+
+  dom.saveWorkoutPlan.disabled = selectedExercises.length === 0;
+}
+
+function renderWorkoutPlans() {
+  if (!state.workouts.plans.length) {
+    dom.workoutPlanList.innerHTML = `<div class="empty-state">Save a workout plan to start training.</div>`;
+    return;
+  }
+
+  dom.workoutPlanList.innerHTML = state.workouts.plans
+    .map((plan) => {
+      const summary = getWorkoutPlanSummary(plan);
+      const groupLabels = plan.groups
+        .map((groupId) => muscleGroups[groupId])
+        .filter(Boolean)
+        .map((group) => `<span>${group.label}</span>`)
+        .join("");
+      return `
+        <article class="workout-plan-card">
+          <div class="workout-card-main">
+            <svg class="icon"><use href="#icon-dumbbell"></use></svg>
+            <span>
+              <strong>${escapeHtml(plan.name)}</strong>
+              <span>${summary.exercises} moves / ${summary.sets} sets / ${summary.xp} XP</span>
+            </span>
+          </div>
+          <div class="workout-muscles">${groupLabels}</div>
+          <div class="workout-card-actions">
+            <button class="secondary-button" type="button" data-workout-action="start-plan" data-plan-id="${plan.id}">
+              <svg class="icon"><use href="#icon-play"></use></svg>
+              Start
+            </button>
+            <button class="icon-button delete-button" type="button" data-workout-action="delete-plan" data-plan-id="${plan.id}" aria-label="Delete ${escapeHtml(plan.name)}">
+              <svg class="icon"><use href="#icon-trash"></use></svg>
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderWorkoutSession() {
+  const session = state.activeWorkout;
+
+  if (!session) {
+    dom.activeWorkoutPanel.hidden = true;
+    dom.activeWorkoutList.innerHTML = "";
+    return;
+  }
+
+  dom.activeWorkoutPanel.hidden = false;
+  dom.activeWorkoutTitle.textContent = session.planName;
+  dom.activeWorkoutList.innerHTML = session.exercises
+    .map((exercise, exerciseIndex) => {
+      const group = muscleGroups[exercise.group] || muscleGroups.legs;
+      const lastSet = getLastExerciseSet(exercise.id, session.id);
+      const lastText = lastSet ? `Last: ${formatExerciseSet(lastSet)}` : "No previous log";
+      return `
+        <article class="guided-exercise" style="--muscle-color: ${group.color}">
+          <div class="guided-exercise-header">
+            <span>
+              <strong>${escapeHtml(exercise.name)}</strong>
+              <span>${group.label} / ${lastText}</span>
+            </span>
+          </div>
+          <div class="workout-set-list">
+            ${exercise.sets
+              .map((set, setIndex) => {
+                const doneClass = set.done ? " is-done" : "";
+                return `
+                  <div class="workout-set-row${doneClass}">
+                    <label class="set-check">
+                      <input type="checkbox" data-workout-field="done" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" ${set.done ? "checked" : ""}>
+                      <span>Set ${setIndex + 1}</span>
+                    </label>
+                    <label class="set-field">
+                      <span>Reps</span>
+                      <input type="number" min="0" max="500" inputmode="numeric" data-workout-field="reps" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" value="${escapeHtml(set.reps)}">
+                    </label>
+                    <label class="set-field">
+                      <span>Weight</span>
+                      <input type="number" min="0" max="2000" step="5" inputmode="decimal" data-workout-field="weight" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" value="${escapeHtml(set.weight)}">
+                    </label>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  updateWorkoutSessionSummary();
+}
+
+function renderWorkoutLogs() {
+  if (!state.workouts.logs.length) {
+    dom.workoutLogList.innerHTML = `<div class="empty-state">Finished workouts will show up here.</div>`;
+    return;
+  }
+
+  dom.workoutLogList.innerHTML = state.workouts.logs
+    .slice(0, 5)
+    .map((log) => {
+      const summary = getWorkoutLogSummary(log);
+      return `
+        <article class="workout-log-card">
+          <span>
+            <strong>${escapeHtml(log.planName)}</strong>
+            <span>${formatDate(log.date, { month: "short", day: "numeric" })} / ${summary.completedSets} sets</span>
+          </span>
+          <span class="xp-badge">${log.xp} XP</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function updateWorkoutSessionSummary() {
+  if (!state.activeWorkout) return;
+
+  const summary = getWorkoutSessionSummary(state.activeWorkout);
+  dom.workoutSessionSummary.textContent = `${summary.completedSets}/${summary.totalSets} sets`;
+  dom.finishWorkout.disabled = summary.completedSets === 0;
+  dom.finishWorkout.innerHTML = `
+    <svg class="icon"><use href="#icon-check"></use></svg>
+    Finish +${summary.xp} XP
+  `;
+}
+
+function getWorkoutSessionSummary(session) {
+  const totalSets = session.exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
+  const completedSets = session.exercises.reduce(
+    (total, exercise) => total + exercise.sets.filter((set) => set.done).length,
+    0
+  );
+  const allPlannedSetsDone = completedSets > 0 && completedSets === totalSets;
+  const xp = clamp(
+    workoutXp.base + completedSets * workoutXp.perSet + (allPlannedSetsDone ? workoutXp.planBonus : 0),
+    workoutXp.base,
+    workoutXp.max
+  );
+
+  return { totalSets, completedSets, xp };
+}
+
+function getWorkoutPlanSummary(plan) {
+  const sets = plan.exercises.reduce((total, exercise) => total + Number(exercise.sets || 0), 0);
+  const xp = clamp(workoutXp.base + sets * workoutXp.perSet + workoutXp.planBonus, workoutXp.base, workoutXp.max);
+  return {
+    exercises: plan.exercises.length,
+    sets,
+    xp
+  };
+}
+
+function getWorkoutLogSummary(log) {
+  const completedSets = log.exercises.reduce(
+    (total, exercise) => total + exercise.sets.filter((set) => set.done).length,
+    0
+  );
+  return { completedSets };
+}
+
+function getLastExerciseSet(exerciseId, ignoreLogId = "") {
+  for (const log of state.workouts.logs) {
+    if (log.id === ignoreLogId) continue;
+    const exercise = log.exercises.find((item) => item.id === exerciseId);
+    if (!exercise) continue;
+    const doneSet = [...exercise.sets].reverse().find((set) => set.done);
+    if (doneSet) return doneSet;
+  }
+
+  return null;
+}
+
+function formatExerciseSet(set) {
+  const weight = set.weight === "" ? "bodyweight" : `${set.weight} lb`;
+  return `${weight} x ${set.reps}`;
+}
+
+function rememberWorkoutTargets(log) {
+  const plan = state.workouts.plans.find((item) => item.id === log.planId);
+  if (!plan) return;
+
+  plan.exercises = plan.exercises.map((exercise) => {
+    const loggedExercise = log.exercises.find((item) => item.id === exercise.id);
+    if (!loggedExercise) return exercise;
+    const lastDone = [...loggedExercise.sets].reverse().find((set) => set.done);
+    if (!lastDone) return exercise;
+
+    return {
+      ...exercise,
+      reps: lastDone.reps || exercise.reps,
+      weight: lastDone.weight === "" ? exercise.weight : lastDone.weight
+    };
+  });
+}
+
+function makeCompletedWorkoutTask(log) {
+  return {
+    id: createId(),
+    title: `${log.planName} workout`,
+    category: "gym",
+    date: todayKey,
+    repeat: "none",
+    time: toTimeInputValue(new Date()),
+    xp: log.xp,
+    completed: true,
+    completedAt: log.completedAt,
+    completions: {},
+    timeOverrides: {},
+    createdAt: log.completedAt
+  };
 }
 
 function renderProgress() {
@@ -980,6 +1655,161 @@ function sumXp(tasks) {
   return tasks.reduce((total, task) => total + Number(task.xp || 0), 0);
 }
 
+function loadWorkoutData() {
+  try {
+    const raw = localStorage.getItem(WORKOUT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return normalizeWorkoutData(parsed);
+    }
+  } catch (error) {
+    console.warn("Unable to load saved workouts", error);
+  }
+
+  const seeded = seedWorkoutData();
+  try {
+    localStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(seeded));
+  } catch (error) {
+    console.warn("Unable to save starter workouts", error);
+  }
+  return seeded;
+}
+
+function normalizeWorkoutData(data) {
+  const seeded = seedWorkoutData();
+  const plans = Array.isArray(data && data.plans)
+    ? data.plans.map(normalizeWorkoutPlan).filter(Boolean)
+    : seeded.plans;
+  const logs = Array.isArray(data && data.logs) ? data.logs.map(normalizeWorkoutLog).filter(Boolean) : [];
+
+  return {
+    plans: plans.length ? plans : seeded.plans,
+    logs
+  };
+}
+
+function normalizeWorkoutPlan(plan) {
+  if (!plan || !plan.name || !Array.isArray(plan.exercises)) return null;
+  const exercises = plan.exercises.map(normalizePlanExercise).filter(Boolean);
+  if (!exercises.length) return null;
+
+  return {
+    id: plan.id || createId(),
+    name: String(plan.name),
+    type: workoutTypePresets.some((preset) => preset.id === plan.type) ? plan.type : "custom",
+    groups: normalizeWorkoutGroups(plan.groups, exercises),
+    exercises,
+    createdAt: plan.createdAt || new Date().toISOString()
+  };
+}
+
+function normalizePlanExercise(exercise) {
+  if (!exercise) return null;
+  const base = exerciseMap[exercise.id];
+  if (!base) return null;
+
+  return {
+    id: base.id,
+    name: base.name,
+    group: base.group,
+    sets: clamp(Number(exercise.sets) || base.sets, 1, 8),
+    reps: clamp(Number(exercise.reps) || base.reps, 1, 500),
+    weight: exercise.weight === "" || exercise.weight === undefined ? "" : clamp(Number(exercise.weight) || 0, 0, 2000)
+  };
+}
+
+function normalizeWorkoutLog(log) {
+  if (!log || !log.planName || !Array.isArray(log.exercises)) return null;
+
+  return {
+    id: log.id || createId(),
+    planId: log.planId || "",
+    planName: String(log.planName),
+    date: log.date || todayKey,
+    startedAt: log.startedAt || log.completedAt || new Date().toISOString(),
+    completedAt: log.completedAt || new Date().toISOString(),
+    xp: clamp(Number(log.xp) || workoutXp.base, workoutXp.base, workoutXp.max),
+    exercises: log.exercises.map(normalizeLoggedExercise).filter(Boolean)
+  };
+}
+
+function normalizeLoggedExercise(exercise) {
+  if (!exercise || !Array.isArray(exercise.sets)) return null;
+  const base = exerciseMap[exercise.id];
+  if (!base) return null;
+
+  return {
+    id: base.id,
+    name: base.name,
+    group: base.group,
+    sets: exercise.sets.map((set) => ({
+      reps: clamp(Number(set.reps) || 0, 0, 500),
+      weight: set.weight === "" || set.weight === undefined ? "" : clamp(Number(set.weight) || 0, 0, 2000),
+      done: Boolean(set.done)
+    }))
+  };
+}
+
+function normalizeWorkoutGroups(groups, exercises) {
+  const fromInput = Array.isArray(groups) ? groups.filter((groupId) => muscleGroups[groupId]) : [];
+  const fromExercises = [...new Set(exercises.map((exercise) => exercise.group))];
+  return fromInput.length ? [...new Set(fromInput)] : fromExercises;
+}
+
+function saveWorkoutData() {
+  try {
+    localStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(state.workouts));
+  } catch (error) {
+    console.warn("Unable to save workouts", error);
+  }
+}
+
+function seedWorkoutData() {
+  return {
+    plans: [
+      makeWorkoutPlan("Push Day", "push"),
+      makeWorkoutPlan("Pull Day", "pull"),
+      makeWorkoutPlan("Leg Day", "legs")
+    ],
+    logs: []
+  };
+}
+
+function makeWorkoutPlan(name, typeId) {
+  const preset = workoutTypePresets.find((item) => item.id === typeId) || workoutTypePresets[0];
+  return {
+    id: createId(),
+    name,
+    type: preset.id,
+    groups: [...preset.groups],
+    exercises: preset.exercises.map(makePlanExercise).filter(Boolean),
+    createdAt: new Date().toISOString()
+  };
+}
+
+function makePlanExercise(exerciseId) {
+  const base = exerciseMap[exerciseId];
+  if (!base) return null;
+  return {
+    id: base.id,
+    name: base.name,
+    group: base.group,
+    sets: base.sets,
+    reps: base.reps,
+    weight: ""
+  };
+}
+
+function createWorkoutBuilder(typeId = "push") {
+  const preset = workoutTypePresets.find((item) => item.id === typeId) || workoutTypePresets[0];
+  return {
+    type: preset.id,
+    name: preset.name,
+    selectedGroups: new Set(preset.groups),
+    exerciseIds: [...preset.exercises]
+  };
+}
+
 function loadTasks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -1132,6 +1962,12 @@ function formatTime(value) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function toTimeInputValue(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
 function createId() {
