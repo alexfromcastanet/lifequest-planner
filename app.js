@@ -1,5 +1,6 @@
 const STORAGE_KEY = "lifequest.tasks.v1";
 const WORKOUT_STORAGE_KEY = "lifequest.workouts.v1";
+const DIET_STORAGE_KEY = "lifequest.diet.v1";
 
 const muscleGroups = {
   chest: { label: "Chest", color: "#b94848" },
@@ -109,6 +110,15 @@ const focusSprint = {
   ]
 };
 
+const dietTargets = {
+  rewardXp: 25,
+  metrics: [
+    { id: "water", label: "Water", detail: "Cups", goal: 8, color: "#0f6f68", icon: "#icon-droplet" },
+    { id: "protein", label: "Protein", detail: "Meals or shakes", goal: 3, color: "#2867d8", icon: "#icon-dumbbell" },
+    { id: "plants", label: "Plants", detail: "Fruit or veg", goal: 4, color: "#16865f", icon: "#icon-apple" }
+  ]
+};
+
 const categories = {
   work: {
     label: "Work",
@@ -202,6 +212,7 @@ const todayKey = toDateKey(today);
 const state = {
   tasks: loadTasks(),
   workouts: loadWorkoutData(),
+  diet: loadDietData(),
   selectedDate: todayKey,
   visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1),
   activeView: "today",
@@ -267,6 +278,9 @@ function bindDom() {
     "completed-summary",
     "completed-count",
     "completed-task-list",
+    "diet-target-pill",
+    "diet-target-list",
+    "claim-diet-targets",
     "template-grid",
     "month-label",
     "calendar-grid",
@@ -376,6 +390,7 @@ function bindEvents() {
     if (!shouldReset) return;
     state.tasks = seedTasks();
     state.workouts = seedWorkoutData();
+    state.diet = seedDietData();
     state.selectedDate = todayKey;
     state.visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     state.filter = "all";
@@ -385,6 +400,7 @@ function bindEvents() {
     closeFocusTimer();
     saveTasks();
     saveWorkoutData();
+    saveDietData();
     syncFormDate();
     renderAll();
   });
@@ -426,6 +442,12 @@ function bindEvents() {
     const bossAction = event.target.closest("[data-boss-action]");
     if (bossAction) {
       handleBossAction(bossAction);
+      return;
+    }
+
+    const dietAction = event.target.closest("[data-diet-action]");
+    if (dietAction) {
+      handleDietAction(dietAction);
       return;
     }
 
@@ -842,6 +864,7 @@ function selectDate(dateKey) {
 function renderAll() {
   renderStats();
   renderCategoryBoard();
+  renderDietTargets();
   renderAgenda();
   renderCalendar();
   renderCalendarAgenda();
@@ -1044,6 +1067,70 @@ function getActiveEmptyText(tasks, emptyText = "No quests for this day.") {
   }
 
   return emptyText;
+}
+
+function renderDietTargets() {
+  if (!dom.dietTargetList || !dom.claimDietTargets) return;
+
+  const progress = getDietTargetProgress(state.selectedDate);
+  const status = progress.claimed
+    ? "Claimed"
+    : progress.isComplete
+      ? "Ready"
+      : `${progress.done}/${progress.total}`;
+
+  dom.dietTargetPill.textContent = status;
+  dom.dietTargetList.innerHTML = progress.metrics.map(renderDietTargetRow).join("");
+  dom.claimDietTargets.disabled = progress.claimed || !progress.isComplete;
+  dom.claimDietTargets.classList.toggle("is-claimed", progress.claimed);
+  dom.claimDietTargets.innerHTML = `
+    <svg class="icon"><use href="${progress.claimed ? "#icon-check" : "#icon-trophy"}"></use></svg>
+    ${progress.claimed ? "XP claimed" : `Claim +${dietTargets.rewardXp} XP`}
+  `;
+}
+
+function renderDietTargetRow(metric) {
+  const percent = Math.min(100, Math.round((metric.value / metric.goal) * 100));
+  const completeClass = metric.value >= metric.goal ? " is-complete" : "";
+  const minusDisabled = metric.value <= 0 ? " disabled" : "";
+  const plusDisabled = metric.value >= metric.goal ? " disabled" : "";
+
+  return `
+    <article class="diet-target-row${completeClass}" style="--diet-target-color: ${metric.color}">
+      <span class="diet-target-icon">
+        <svg class="icon"><use href="${metric.icon}"></use></svg>
+      </span>
+      <span class="diet-target-copy">
+        <strong>${metric.label}</strong>
+        <span>${metric.detail}</span>
+      </span>
+      <span class="diet-target-count">${metric.value}/${metric.goal}</span>
+      <span class="diet-stepper">
+        <button class="icon-button" type="button" data-diet-action="adjust" data-diet-metric="${metric.id}" data-diet-delta="-1" aria-label="Decrease ${metric.label}"${minusDisabled}>
+          <svg class="icon"><use href="#icon-minus"></use></svg>
+        </button>
+        <button class="icon-button" type="button" data-diet-action="adjust" data-diet-metric="${metric.id}" data-diet-delta="1" aria-label="Increase ${metric.label}"${plusDisabled}>
+          <svg class="icon"><use href="#icon-plus"></use></svg>
+        </button>
+      </span>
+      <span class="diet-target-track" aria-hidden="true">
+        <span class="diet-target-fill" style="width: ${percent}%"></span>
+      </span>
+    </article>
+  `;
+}
+
+function handleDietAction(button) {
+  const action = button.dataset.dietAction;
+
+  if (action === "adjust") {
+    updateDietMetric(button.dataset.dietMetric, Number(button.dataset.dietDelta) || 0);
+    return;
+  }
+
+  if (action === "claim-targets") {
+    claimDietTargetReward();
+  }
 }
 
 function handleBossAction(button) {
@@ -2140,6 +2227,77 @@ function sumXp(tasks) {
   return tasks.reduce((total, task) => total + Number(task.xp || 0), 0);
 }
 
+function updateDietMetric(metricId, delta) {
+  const target = dietTargets.metrics.find((metric) => metric.id === metricId);
+  if (!target || !delta) return;
+
+  const day = getDietDay(state.selectedDate);
+  day[metricId] = clamp(Number(day[metricId] || 0) + delta, 0, target.goal);
+  saveDietData();
+  renderAll();
+}
+
+function getDietDay(dateKey) {
+  if (!state.diet.days[dateKey]) {
+    state.diet.days[dateKey] = createDietDay();
+  }
+
+  return state.diet.days[dateKey];
+}
+
+function getDietTargetProgress(dateKey) {
+  const day = getDietDay(dateKey);
+  const metrics = dietTargets.metrics.map((target) => {
+    const value = clamp(Number(day[target.id]) || 0, 0, target.goal);
+    return {
+      ...target,
+      value
+    };
+  });
+  const done = metrics.filter((metric) => metric.value >= metric.goal).length;
+
+  return {
+    metrics,
+    done,
+    total: metrics.length,
+    isComplete: done === metrics.length,
+    claimed: Boolean(getDietTargetClaimTask(dateKey))
+  };
+}
+
+function claimDietTargetReward() {
+  const progress = getDietTargetProgress(state.selectedDate);
+  if (!progress.isComplete || progress.claimed) return;
+
+  const completedAt = new Date().toISOString();
+  state.tasks.push({
+    id: createId(),
+    title: "Diet targets hit",
+    category: "diet",
+    date: state.selectedDate,
+    repeat: "none",
+    time: toTimeInputValue(new Date()),
+    xp: dietTargets.rewardXp,
+    completed: true,
+    completedAt,
+    completions: {},
+    timeOverrides: {},
+    bonusType: "diet-targets",
+    bossWeek: "",
+    focusTaskId: "",
+    focusDate: "",
+    dietDate: state.selectedDate,
+    createdAt: completedAt
+  });
+
+  saveTasks();
+  renderAll();
+}
+
+function getDietTargetClaimTask(dateKey) {
+  return state.tasks.find((task) => task.bonusType === "diet-targets" && task.dietDate === dateKey);
+}
+
 function getWeeklyBossProgress(weekStart = getWeekStart(parseDateKey(todayKey))) {
   const weekEnd = addDays(weekStart, 6);
   const weekKey = toDateKey(weekStart);
@@ -2201,6 +2359,63 @@ function getFocusBonusTask(taskId, dateKey) {
   return state.tasks.find(
     (task) => task.bonusType === "focus-sprint" && task.focusTaskId === taskId && task.focusDate === dateKey
   );
+}
+
+function loadDietData() {
+  try {
+    const raw = localStorage.getItem(DIET_STORAGE_KEY);
+    if (raw) {
+      return normalizeDietData(JSON.parse(raw));
+    }
+  } catch (error) {
+    console.warn("Unable to load saved diet targets", error);
+  }
+
+  const seeded = seedDietData();
+  try {
+    localStorage.setItem(DIET_STORAGE_KEY, JSON.stringify(seeded));
+  } catch (error) {
+    console.warn("Unable to save starter diet targets", error);
+  }
+  return seeded;
+}
+
+function normalizeDietData(data) {
+  const days = {};
+  const inputDays = data && data.days && typeof data.days === "object" && !Array.isArray(data.days) ? data.days : {};
+
+  Object.entries(inputDays).forEach(([dateKey, day]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !day || typeof day !== "object") return;
+    days[dateKey] = normalizeDietDay(day);
+  });
+
+  return { days };
+}
+
+function normalizeDietDay(day) {
+  return dietTargets.metrics.reduce((result, metric) => {
+    result[metric.id] = clamp(Number(day[metric.id]) || 0, 0, metric.goal);
+    return result;
+  }, createDietDay());
+}
+
+function createDietDay() {
+  return dietTargets.metrics.reduce((result, metric) => {
+    result[metric.id] = 0;
+    return result;
+  }, {});
+}
+
+function saveDietData() {
+  try {
+    localStorage.setItem(DIET_STORAGE_KEY, JSON.stringify(state.diet));
+  } catch (error) {
+    console.warn("Unable to save diet targets", error);
+  }
+}
+
+function seedDietData() {
+  return { days: {} };
 }
 
 function loadWorkoutData() {
@@ -2469,6 +2684,7 @@ function normalizeTask(task) {
     bossWeek: task.bossWeek || "",
     focusTaskId: task.focusTaskId || "",
     focusDate: task.focusDate || "",
+    dietDate: task.dietDate || "",
     createdAt: task.createdAt || new Date().toISOString()
   };
 }
@@ -2524,6 +2740,7 @@ function makeTask(title, category, date, time, xp, completed, repeat = "none") {
     bossWeek: "",
     focusTaskId: "",
     focusDate: "",
+    dietDate: "",
     createdAt: new Date().toISOString()
   };
 }

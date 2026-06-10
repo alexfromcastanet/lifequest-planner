@@ -764,6 +764,121 @@ p {
   font-weight: 800;
 }
 
+.diet-target-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.diet-target-heading {
+  margin-top: 0;
+}
+
+.diet-target-list {
+  display: grid;
+  gap: 8px;
+}
+
+.diet-target-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 66px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--diet-target-color);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.diet-target-row.is-complete {
+  background: #f4fbf7;
+}
+
+.diet-target-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--diet-target-color);
+}
+
+.diet-target-copy {
+  min-width: 0;
+}
+
+.diet-target-copy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diet-target-copy span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.diet-target-count {
+  color: var(--diet-target-color);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.diet-stepper {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  gap: 6px;
+}
+
+.diet-stepper .icon-button {
+  width: 34px;
+  height: 34px;
+  color: var(--text);
+  background: #eef2f6;
+}
+
+.diet-stepper .icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.diet-target-track {
+  grid-column: 2 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eaf1;
+}
+
+.diet-target-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--diet-target-color);
+  transition: width 180ms ease;
+}
+
+.diet-claim-button {
+  min-height: 44px;
+}
+
+.diet-claim-button.is-claimed {
+  background: var(--gym);
+}
+
 .calendar-toolbar {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 40px;
@@ -1906,6 +2021,29 @@ body.focus-editor-open .focus-sheet-backdrop {
   .achievement-grid,
   .boss-target-list {
     grid-template-columns: 1fr;
+  }
+
+  .diet-target-card {
+    padding: 10px;
+  }
+
+  .diet-target-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .diet-stepper {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .diet-stepper .icon-button {
+    width: 100%;
+    height: 44px;
+  }
+
+  .diet-target-track {
+    grid-column: 1 / -1;
   }
 
   .weekly-boss-card {
