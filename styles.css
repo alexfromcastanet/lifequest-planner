@@ -1132,6 +1132,109 @@ p {
   background: var(--gym);
 }
 
+.reward-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(96px, 0.35fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+.reward-form .primary-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.reward-shop-list,
+.reward-redemption-list {
+  display: grid;
+  gap: 8px;
+  min-height: 58px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reward-item,
+.reward-redemption {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.reward-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 66px;
+  padding: 10px;
+  border-left: 4px solid var(--reward-color);
+}
+
+.reward-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--reward-color);
+}
+
+.reward-copy {
+  min-width: 0;
+}
+
+.reward-copy strong,
+.reward-redemption strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-copy span,
+.reward-redemption span span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.reward-buy-button {
+  min-width: 86px;
+}
+
+.reward-redemption-list {
+  padding: 0 10px 10px;
+}
+
+.reward-redemption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 9px;
+}
+
+.reward-cost {
+  color: var(--focus);
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.reward-history-menu {
+  margin-top: 0;
+}
+
 .achievement-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2048,6 +2151,40 @@ body.focus-editor-open .focus-sheet-backdrop {
 
   .weekly-boss-card {
     padding: 10px;
+  }
+
+  .reward-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 10px;
+  }
+
+  .reward-form .field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .reward-form .field:nth-child(2) {
+    grid-column: span 2;
+  }
+
+  .reward-form .primary-button {
+    grid-column: span 2;
+    min-height: 46px;
+  }
+
+  .reward-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .reward-buy-button {
+    grid-column: 1 / 3;
+    min-height: 44px;
+    min-width: 0;
+  }
+
+  .reward-item .delete-button {
+    grid-column: 3;
+    grid-row: 2;
   }
 
   .boss-card-top {

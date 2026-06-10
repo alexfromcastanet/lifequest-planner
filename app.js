@@ -1,6 +1,7 @@
 const STORAGE_KEY = "lifequest.tasks.v1";
 const WORKOUT_STORAGE_KEY = "lifequest.workouts.v1";
 const DIET_STORAGE_KEY = "lifequest.diet.v1";
+const REWARD_STORAGE_KEY = "lifequest.rewards.v1";
 
 const muscleGroups = {
   chest: { label: "Chest", color: "#b94848" },
@@ -119,6 +120,8 @@ const dietTargets = {
   ]
 };
 
+const rewardColors = ["#0f6f68", "#2867d8", "#16865f", "#7b5bd6", "#c85b36", "#a36b00"];
+
 const categories = {
   work: {
     label: "Work",
@@ -213,6 +216,7 @@ const state = {
   tasks: loadTasks(),
   workouts: loadWorkoutData(),
   diet: loadDietData(),
+  rewards: loadRewardData(),
   selectedDate: todayKey,
   visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1),
   activeView: "today",
@@ -295,6 +299,12 @@ function bindDom() {
     "week-bars",
     "boss-reward-pill",
     "weekly-boss-card",
+    "reward-bank-pill",
+    "reward-form",
+    "reward-name",
+    "reward-cost",
+    "reward-shop-list",
+    "reward-redemption-list",
     "achievement-grid",
     "workout-week-pill",
     "active-workout-panel",
@@ -352,6 +362,7 @@ function bindEvents() {
   dom.focusPause.addEventListener("click", pauseFocusTimer);
   dom.focusReset.addEventListener("click", resetFocusTimer);
   dom.focusClaim.addEventListener("click", claimFocusBonus);
+  dom.rewardForm.addEventListener("submit", handleRewardSubmit);
   dom.workoutBuilderForm.addEventListener("submit", handleWorkoutPlanSubmit);
   dom.workoutPlanName.addEventListener("input", () => {
     state.workoutBuilder.name = dom.workoutPlanName.value;
@@ -391,6 +402,7 @@ function bindEvents() {
     state.tasks = seedTasks();
     state.workouts = seedWorkoutData();
     state.diet = seedDietData();
+    state.rewards = seedRewardData();
     state.selectedDate = todayKey;
     state.visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     state.filter = "all";
@@ -401,6 +413,7 @@ function bindEvents() {
     saveTasks();
     saveWorkoutData();
     saveDietData();
+    saveRewardData();
     syncFormDate();
     renderAll();
   });
@@ -448,6 +461,12 @@ function bindEvents() {
     const dietAction = event.target.closest("[data-diet-action]");
     if (dietAction) {
       handleDietAction(dietAction);
+      return;
+    }
+
+    const rewardAction = event.target.closest("[data-reward-action]");
+    if (rewardAction) {
+      handleRewardAction(rewardAction);
       return;
     }
 
@@ -1130,6 +1149,40 @@ function handleDietAction(button) {
 
   if (action === "claim-targets") {
     claimDietTargetReward();
+  }
+}
+
+function handleRewardSubmit(event) {
+  event.preventDefault();
+  const name = dom.rewardName.value.trim();
+  const cost = clamp(Number(dom.rewardCost.value) || 0, 5, 5000);
+  if (!name) return;
+
+  state.rewards.items.unshift({
+    id: createId(),
+    name: name.slice(0, 60),
+    cost,
+    color: rewardColors[state.rewards.items.length % rewardColors.length],
+    createdAt: new Date().toISOString()
+  });
+
+  saveRewardData();
+  dom.rewardForm.reset();
+  dom.rewardCost.value = "100";
+  renderProgress();
+  dom.rewardName.focus();
+}
+
+function handleRewardAction(button) {
+  const action = button.dataset.rewardAction;
+
+  if (action === "buy") {
+    buyReward(button.dataset.rewardId);
+    return;
+  }
+
+  if (action === "delete") {
+    deleteReward(button.dataset.rewardId);
   }
 }
 
@@ -1859,6 +1912,7 @@ function renderProgress() {
     .join("");
 
   renderWeeklyBoss(weekStart);
+  renderRewardsShop(stats);
 
   dom.achievementGrid.innerHTML = achievements
     .map((achievement) => {
@@ -1875,6 +1929,58 @@ function renderProgress() {
       `;
     })
     .join("");
+}
+
+function renderRewardsShop(stats = getStats()) {
+  if (!dom.rewardShopList || !dom.rewardRedemptionList) return;
+
+  const bank = getRewardBank(stats);
+  dom.rewardBankPill.textContent = `${bank.available} XP bank`;
+
+  dom.rewardShopList.innerHTML = state.rewards.items.length
+    ? state.rewards.items.map((reward) => renderRewardItem(reward, bank.available)).join("")
+    : `<div class="empty-state">Add a reward to spend XP on.</div>`;
+
+  dom.rewardRedemptionList.innerHTML = state.rewards.redemptions.length
+    ? state.rewards.redemptions
+        .slice(0, 5)
+        .map((redemption) => {
+          return `
+            <li class="reward-redemption">
+              <span>
+                <strong>${escapeHtml(redemption.name)}</strong>
+                <span>${formatDate(toDateKey(new Date(redemption.redeemedAt)), { month: "short", day: "numeric" })}</span>
+              </span>
+              <span class="reward-cost">${redemption.cost} XP</span>
+            </li>
+          `;
+        })
+        .join("")
+    : `<li class="empty-state">Bought rewards will show up here.</li>`;
+}
+
+function renderRewardItem(reward, availableXp) {
+  const canBuy = availableXp >= reward.cost;
+  const disabled = canBuy ? "" : " disabled";
+  const buyLabel = canBuy ? "Buy" : `Need ${reward.cost - availableXp}`;
+
+  return `
+    <article class="reward-item" style="--reward-color: ${reward.color}">
+      <span class="reward-icon">
+        <svg class="icon"><use href="#icon-gift"></use></svg>
+      </span>
+      <span class="reward-copy">
+        <strong>${escapeHtml(reward.name)}</strong>
+        <span>${reward.cost} XP</span>
+      </span>
+      <button class="secondary-button reward-buy-button" type="button" data-reward-action="buy" data-reward-id="${reward.id}"${disabled}>
+        ${buyLabel}
+      </button>
+      <button class="icon-button delete-button" type="button" data-reward-action="delete" data-reward-id="${reward.id}" aria-label="Delete reward: ${escapeHtml(reward.name)}">
+        <svg class="icon"><use href="#icon-trash"></use></svg>
+      </button>
+    </article>
+  `;
 }
 
 function renderWeeklyBoss(weekStart) {
@@ -2298,6 +2404,48 @@ function getDietTargetClaimTask(dateKey) {
   return state.tasks.find((task) => task.bonusType === "diet-targets" && task.dietDate === dateKey);
 }
 
+function getRewardBank(stats = getStats()) {
+  const spent = state.rewards.redemptions.reduce((total, redemption) => total + Number(redemption.cost || 0), 0);
+  return {
+    earned: stats.totalXP,
+    spent,
+    available: Math.max(0, stats.totalXP - spent)
+  };
+}
+
+function buyReward(rewardId) {
+  const reward = state.rewards.items.find((item) => item.id === rewardId);
+  if (!reward) return;
+
+  const bank = getRewardBank();
+  if (reward.cost > bank.available) return;
+
+  state.rewards.redemptions.unshift({
+    id: createId(),
+    rewardId: reward.id,
+    name: reward.name,
+    cost: reward.cost,
+    color: reward.color,
+    redeemedAt: new Date().toISOString()
+  });
+  state.rewards.redemptions = state.rewards.redemptions.slice(0, 100);
+
+  saveRewardData();
+  renderProgress();
+}
+
+function deleteReward(rewardId) {
+  const reward = state.rewards.items.find((item) => item.id === rewardId);
+  if (!reward) return;
+
+  const shouldDelete = window.confirm(`Delete reward "${reward.name}"?`);
+  if (!shouldDelete) return;
+
+  state.rewards.items = state.rewards.items.filter((item) => item.id !== rewardId);
+  saveRewardData();
+  renderProgress();
+}
+
 function getWeeklyBossProgress(weekStart = getWeekStart(parseDateKey(todayKey))) {
   const weekEnd = addDays(weekStart, 6);
   const weekKey = toDateKey(weekStart);
@@ -2416,6 +2564,97 @@ function saveDietData() {
 
 function seedDietData() {
   return { days: {} };
+}
+
+function loadRewardData() {
+  try {
+    const raw = localStorage.getItem(REWARD_STORAGE_KEY);
+    if (raw) {
+      return normalizeRewardData(JSON.parse(raw));
+    }
+  } catch (error) {
+    console.warn("Unable to load saved rewards", error);
+  }
+
+  const seeded = seedRewardData();
+  try {
+    localStorage.setItem(REWARD_STORAGE_KEY, JSON.stringify(seeded));
+  } catch (error) {
+    console.warn("Unable to save starter rewards", error);
+  }
+  return seeded;
+}
+
+function normalizeRewardData(data) {
+  const seeded = seedRewardData();
+  const items = Array.isArray(data && data.items)
+    ? data.items.map(normalizeRewardItem).filter(Boolean)
+    : seeded.items;
+  const redemptions = Array.isArray(data && data.redemptions)
+    ? data.redemptions.map(normalizeRewardRedemption).filter(Boolean)
+    : [];
+
+  return {
+    items: items.length ? items : seeded.items,
+    redemptions
+  };
+}
+
+function normalizeRewardItem(item) {
+  if (!item || !item.name) return null;
+  const name = String(item.name).trim().slice(0, 60);
+  if (!name) return null;
+
+  return {
+    id: String(item.id || createId()),
+    name,
+    cost: clamp(Number(item.cost) || 100, 5, 5000),
+    color: rewardColors.includes(item.color) ? item.color : rewardColors[0],
+    createdAt: item.createdAt || new Date().toISOString()
+  };
+}
+
+function normalizeRewardRedemption(redemption) {
+  if (!redemption || !redemption.name) return null;
+  const redeemedAt = redemption.redeemedAt || new Date().toISOString();
+
+  return {
+    id: String(redemption.id || createId()),
+    rewardId: String(redemption.rewardId || ""),
+    name: String(redemption.name).trim().slice(0, 60),
+    cost: clamp(Number(redemption.cost) || 0, 0, 5000),
+    color: rewardColors.includes(redemption.color) ? redemption.color : rewardColors[0],
+    redeemedAt
+  };
+}
+
+function saveRewardData() {
+  try {
+    localStorage.setItem(REWARD_STORAGE_KEY, JSON.stringify(state.rewards));
+  } catch (error) {
+    console.warn("Unable to save rewards", error);
+  }
+}
+
+function seedRewardData() {
+  return {
+    items: [
+      makeRewardItem("Coffee run", 60, rewardColors[0]),
+      makeRewardItem("Game night", 120, rewardColors[3]),
+      makeRewardItem("Gear upgrade fund", 250, rewardColors[1])
+    ],
+    redemptions: []
+  };
+}
+
+function makeRewardItem(name, cost, color) {
+  return {
+    id: createId(),
+    name,
+    cost,
+    color,
+    createdAt: new Date().toISOString()
+  };
 }
 
 function loadWorkoutData() {
